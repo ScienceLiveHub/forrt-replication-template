@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.guard.outputs.skip }}
+      pages_enabled: ${{ steps.pages_check.outputs.pages_enabled }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +31,20 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whether GitHub Pages is enabled
+        id: pages_check
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api "repos/${{ github.repository }}/pages" 2>/dev/null | head -1 > /dev/null; then
+            echo "::notice::GitHub Pages is enabled — Jupyter Book will deploy."
+            echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::GitHub Pages is not yet enabled on this repo. Build will run; deploy will be skipped. Enable Pages at https://github.com/${{ github.repository }}/settings/pages (Source: GitHub Actions) to enable deploy on the next push."
+            echo "pages_enabled=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Micromamba
@@ -85,7 +100,7 @@ jobs:
 
   deploy:
     needs: build
-    if: needs.build.outputs.skip != 'true'
+    if: needs.build.outputs.skip != 'true' && needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
