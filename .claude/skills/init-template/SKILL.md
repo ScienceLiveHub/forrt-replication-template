@@ -129,12 +129,19 @@ git commit -m "Remove init-template skill (one-shot, no longer needed)"
 
 ## Step 10 — Report
 
-Tell the user:
+Tell the user, in this order, with the push reminder loud and unmissable:
 
-1. What was substituted and where.
-2. The next phase: read `paper/` (drop the PDF in there if not already), then run `/agent paper-analyst` to start Phase 1.
-3. The pending placeholder `{{ZENODO_DOI}}` — explain it's filled in after the first GitHub release.
-4. Reminder to verify the GitHub email at <https://github.com/settings/emails>.
+1. **What was substituted and where** (which files were modified).
+2. **🚨 Push the commits.** Both the substitution commit and the skill-removal commit live **locally only** — pushing is a separate manual step. Until they push, GitHub Actions, Docker pulls, and fresh clones will see the un-substituted template state, which looks identical to "the template didn't work". Concrete command:
+
+   ```bash
+   git push
+   ```
+
+   This is the single most common confusion after `/init-template`. State it explicitly even if it feels redundant.
+3. **The next phase**: read `paper/` (drop the PDF in there if not already), then run `/agent paper-analyst` to start Phase 1.
+4. **The pending placeholder `{{ZENODO_DOI}}`** — filled in after the first GitHub release.
+5. **GitHub email verification reminder** at <https://github.com/settings/emails> if the user hasn't already verified the email used for git commits.
 
 ## Failure modes
 
