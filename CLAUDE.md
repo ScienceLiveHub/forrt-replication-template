@@ -167,6 +167,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Need to retract / supersede / batch-publish a nanopub | `docs/programmatic-nanopubs.md` |
 | Draft the launch announcement post | `docs/announcement-template.md` |
 | Use this template with Cursor / Aider / Continue / non-Claude AI | `docs/ai-portability.md` |
+| Archive HEALPix EO data as GRID4EARTH / EOPF Zarr | `docs/eopf-zarr-conversion.md` |
 
 ## When in doubt
 
