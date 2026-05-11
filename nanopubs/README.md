@@ -4,16 +4,33 @@ This directory holds the field-by-field drafts of the FORRT chain, plus the regi
 
 ## The chain
 
-A complete paper-rooted FORRT chain is six steps published in order:
+A complete FORRT chain is six steps published in order. **Step 1 has three alternative anchor templates** — pick the one that matches your chain shape (see `docs/chain-decision-tree.md`) and **delete the other two** before drafting, so the directory reflects the chain you're actually building:
 
-1. `drafts/01_quote.md` → Quote-with-comment
-2. `drafts/02_aida.md` → AIDA Sentence
-3. `drafts/03_claim.md` → FORRT Claim
-4. `drafts/04_study.md` → FORRT Replication Study
-5. `drafts/05_outcome.md` → FORRT Replication Outcome
-6. `drafts/06_citation.md` → CiTO Citation
+| Step | Draft file | Template |
+|---|---|---|
+| 1 (paper-rooted) | `drafts/01_quote.md` | Quote-with-comment |
+| 1 (question-rooted, comparative) | `drafts/01_pico.md` | PICO Research Question |
+| 1 (question-rooted, descriptive) | `drafts/01_pcc.md` | PCC Research Question |
+| 2 | `drafts/02_aida.md` | AIDA Sentence |
+| 3 | `drafts/03_claim.md` | FORRT Claim |
+| 4 | `drafts/04_study.md` | FORRT Replication Study |
+| 5 | `drafts/05_outcome.md` | FORRT Replication Outcome |
+| 6 | `drafts/06_citation.md` | CiTO Citation |
 
-For question-rooted chains, replace step 1 with `drafts/01_pico.md` or `drafts/01_pcc.md`. See `docs/chain-decision-tree.md` for which to choose.
+Once the chain shape is decided, delete the two step-1 alternatives you aren't using:
+
+```bash
+# Paper-rooted chain — keep 01_quote.md:
+rm nanopubs/drafts/01_pico.md nanopubs/drafts/01_pcc.md
+
+# Question-rooted, comparative (PICO) — keep 01_pico.md:
+rm nanopubs/drafts/01_quote.md nanopubs/drafts/01_pcc.md
+
+# Question-rooted, descriptive (PCC) — keep 01_pcc.md:
+rm nanopubs/drafts/01_quote.md nanopubs/drafts/01_pico.md
+```
+
+Keeping all three confuses the audit trail: a reader of the finished repo can't tell which anchor the chain was actually built from.
 
 ## Drafting workflow
 
