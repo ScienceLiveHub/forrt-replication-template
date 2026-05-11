@@ -63,8 +63,8 @@ Once the six-step chain is published, two optional further nanopubs may apply:
 - **Research Software** — when the repo *produces* a reusable software artefact (an upstream library, not a one-off demo). Cites back to the FORRT Claim URI as `Research Project`. Drafted in `drafts/07_research_software.md`. See `docs/forrt-form-fields.md` § Research Software and `CLAUDE.md` § Layered architecture: FORRT vs Research Software.
 - **Research Synthesis** — when this chain is one of several testing facets of a shared underlying property. Drafted in `drafts/08_synthesis.md`. See `docs/forrt-form-fields.md` § Research Synthesis.
 
-## What lives in `drafts/` after publishing
+## After publishing
 
-After a draft has been published, it stays on disk as the historical record of what was submitted. The `PUBLISHED.md` registry is the canonical source for URIs; the drafts are the canonical source for content (including any optional fields skipped).
+The published nanopub URI (recorded in `PUBLISHED.md`) is the canonical, citable record on the nanopub network. The draft file in `drafts/` is just the field-by-field local notes used to assemble that submission.
 
-If a republish is needed (e.g. the platform rejected the original), edit the draft and republish. Don't delete drafts.
+What you do with the drafts after publishing is up to you. The template doesn't prescribe either way.
