@@ -3,6 +3,11 @@
 > Run the pre-flight checklist in `docs/forrt-form-fields.md` § Pre-flight checklist before drafting.
 >
 > If this is a question-rooted chain, use `01_pico.md` or `01_pcc.md` instead — see `docs/chain-decision-tree.md`.
+>
+> **After choosing the chain shape, delete the two step-1 alternates you aren't using.** Once you've decided this chain is paper-rooted and keep `01_quote.md`, run:
+> ```bash
+> rm nanopubs/drafts/01_pico.md nanopubs/drafts/01_pcc.md
+> ```
 
 **Form heading:** *"Annotate a paper quotation — Annotating a paper quotation with personal interpretation"*
 

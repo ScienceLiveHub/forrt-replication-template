@@ -3,6 +3,11 @@
 > Use this draft instead of `01_quote.md` if your chain is question-rooted and descriptive/scoping (no clear comparator). For comparative question-rooted chains, use `01_pico.md`. See `docs/chain-decision-tree.md`.
 >
 > Run the pre-flight checklist in `docs/forrt-form-fields.md` § Pre-flight checklist before drafting.
+>
+> **After choosing the chain shape, delete the two step-1 alternates you aren't using.** Once you've decided this chain is question-rooted-descriptive and keep `01_pcc.md`, run:
+> ```bash
+> rm nanopubs/drafts/01_quote.md nanopubs/drafts/01_pico.md
+> ```
 
 **Form heading:** *"PCC Research Question — Define a review question using the PCC framework (Population, Concept, Context)"*
 

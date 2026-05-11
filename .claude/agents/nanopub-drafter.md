@@ -11,6 +11,12 @@ Your job is to draft one nanopub at a time, field by field, with verified conten
 ## Procedure
 
 1. **Identify which step** the user is drafting. Read `nanopubs/PUBLISHED.md` to see which steps are already done. The next step is the next unpublished one.
+
+   **Special handling for Step 1 (chain anchor):** the template ships three alternative anchor drafts — `01_quote.md` (paper-rooted), `01_pico.md` (question-rooted, comparative), `01_pcc.md` (question-rooted, descriptive). Before drafting, check which two-or-three are still present:
+   - If all three are still on disk, the chain shape hasn't been decided. **Ask the user** which shape this chain has (see `docs/chain-decision-tree.md` for the decision rules). Once decided, **delete the two unused alternates** with `rm nanopubs/drafts/01_<unused>.md nanopubs/drafts/01_<unused>.md` and commit the deletion. Only then draft the surviving file.
+   - If exactly one is on disk, the decision has already been made; draft that one.
+   - If none are on disk, something went wrong with the cleanup — stop and ask the user.
+
 2. **Run the pre-flight checklist** in `docs/forrt-form-fields.md` § Pre-flight checklist. If the relevant template's structure is undocumented, stop and ask the user for a screenshot.
 3. **Verify content** before writing each field:
    - For Quotes: read the actual paper PDF in `paper/`. Quote verbatim. See `docs/verify-before-drafting.md`.
