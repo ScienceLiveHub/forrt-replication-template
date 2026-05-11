@@ -27,7 +27,7 @@ Form heading: *"Annotate a paper quotation — Annotating a paper quotation with
 | Quote whole text (less than 500 characters) | radio button (default selected) | Mode for quoting a single short passage. The Quoted Text field below must be ≤ 500 chars. |
 | Quote start/end | radio button (alternative) | Alternative mode — two short text inputs for start phrase + end phrase, marking a longer span. Use when the quote is too long for whole-text mode. |
 | Quoted Text | textarea, **required** | The verbatim sentence(s) from the paper. ≤ 500 chars in "Quote whole text" mode. **Must be character-for-character verbatim — see `docs/verify-before-drafting.md`.** |
-| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Use this to explain why the quote matters and what the replication tests. |
+| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Use this to explain why the quote matters and what the replication tests. **Target ≤ 500 chars** — same brevity discipline as the Quoted Text field. Long comments dilute the *why this quote matters* point and read as marketing rather than interpretation. |
 
 Use this template for **paper-rooted chains** where you are testing or extending a sentence from someone else's paper. See `docs/chain-decision-tree.md`.
 
