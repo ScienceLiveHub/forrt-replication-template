@@ -169,6 +169,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Use this template with Cursor / Aider / Continue / non-Claude AI | `docs/ai-portability.md` |
 | Archive HEALPix EO data as GRID4EARTH / EOPF Zarr | `docs/eopf-zarr-conversion.md` |
 | Verify a published FORRT chain's internal + external consistency | `/verify-chain` skill (`.claude/skills/verify-chain/SKILL.md`) |
+| Deposit the work as a Rohub Research Object | `docs/rohub-deposit.md` + `scripts/build-rohub-manifest.py` |
 
 ## When in doubt
 
