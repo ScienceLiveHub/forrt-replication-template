@@ -68,3 +68,16 @@ Once the six-step chain is published, two optional further nanopubs may apply:
 The published nanopub URI (recorded in `PUBLISHED.md`) is the canonical, citable record on the nanopub network. The draft file in `drafts/` is just the field-by-field local notes used to assemble that submission.
 
 What you do with the drafts after publishing is up to you. The template doesn't prescribe either way.
+
+## Verify the chain before announcing
+
+Once all 6 step URIs are in `PUBLISHED.md`, run **`/verify-chain`** as the final pre-comms check. It fetches each published nanopub, walks the citation graph, and verifies:
+
+- Each step's TriG actually references the previous step's URI (internal consistency).
+- The Outcome's *Repository URL* matches this repo's git remote.
+- The CiTO step's cited DOI resolves.
+- The Outcome's source DOI matches `CITATION.cff` (warns on version drift).
+
+A green `/verify-chain` report is the "safe to LinkedIn-post" signal. A red report names the specific failure so you can retract+supersede the affected step before announcing.
+
+See `.claude/skills/verify-chain/SKILL.md` for the procedure and `docs/programmatic-nanopubs.md` for the retract / supersede workflow when fixes are needed.

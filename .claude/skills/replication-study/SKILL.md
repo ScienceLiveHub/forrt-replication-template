@@ -46,13 +46,17 @@ Before promoting a phase as "done", verify the exit criteria from `CLAUDE.md`:
 - Phase 2: `snakemake --cores 1` runs end-to-end on a fresh checkout.
 - Phase 3: `nanopubs/drafts/05_outcome.md` has a conclusion sentence.
 - Phase 4: GitHub release page is live, Zenodo record exists, `CITATION.cff`/`codemeta.json` show the concept DOI.
-- Phase 5: All six chain-step URIs are in `nanopubs/PUBLISHED.md`, embedded in the Jupyter Book, browsable from `index.md`.
+- Phase 5: All six chain-step URIs are in `nanopubs/PUBLISHED.md`, embedded in the Jupyter Book, browsable from `index.md`. **Then run `/verify-chain`** — the report must come back GREEN (internal + external consistency) before declaring Phase 5 done.
 
 If any exit criterion fails, do not promote the phase. Tell the user what's missing.
 
 ### Step 4 — Final FAIR4RS check
 
 After Phase 5, run the checklist in `docs/fair4rs-checklist.md`. Tell the user which boxes are ticked and which need attention. The replication is "complete" when the checklist is fully ticked.
+
+### Step 5 — Final chain verification
+
+After the FAIR4RS checklist is green, run `/verify-chain` one more time. This is the "safe to announce" gate — a green report confirms the published nanopubs cross-reference each other correctly, the Outcome points at the right repo URL, and the cited DOI resolves. A red report names the specific step to retract+supersede before any public announcement (see `docs/programmatic-nanopubs.md`).
 
 ## Anti-patterns
 

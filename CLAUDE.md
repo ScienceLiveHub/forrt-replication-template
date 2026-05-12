@@ -168,6 +168,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Draft the launch announcement post | `docs/announcement-template.md` |
 | Use this template with Cursor / Aider / Continue / non-Claude AI | `docs/ai-portability.md` |
 | Archive HEALPix EO data as GRID4EARTH / EOPF Zarr | `docs/eopf-zarr-conversion.md` |
+| Verify a published FORRT chain's internal + external consistency | `/verify-chain` skill (`.claude/skills/verify-chain/SKILL.md`) |
 
 ## When in doubt
 
