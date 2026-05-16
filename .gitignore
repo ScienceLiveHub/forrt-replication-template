@@ -22,6 +22,12 @@ data/*
 !data/.gitkeep
 !data/README.md
 
+# Prior-chain import cache — never committed; regenerated on demand from
+# the entry URI in CITATION.cff `references:`. The persistent pointer to
+# a prior chain is the URI, not the cached nanopubs here.
+# See docs/nanopub-chain-discovery.md.
+nanopubs/imported/
+
 # Paper PDFs (single PDF allowed; subfolder build artefacts ignored)
 paper/_build/
 paper/.tmp/

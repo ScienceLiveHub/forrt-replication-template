@@ -53,8 +53,12 @@ Ask for the following (one prompt; offer them as a structured list):
 | `{{PAPER_AUTHOR_FAMILY}}` | First author's family name |
 | `{{PAPER_YEAR}}` | Paper publication year |
 | `{{REPO_DESCRIPTION}}` | One-sentence description of this repo |
+| `{{PRIOR_CHAIN_URI}}` | *(Optional)* Apex CiTO URI of a prior FORRT chain this replication extends — e.g. `https://w3id.org/sciencelive/np/RA1q6c0fG2bMbiozF8Az2UpIfzAzqp8hoVEl6QIzfUpH8`. Leave blank if this is a fresh replication with no prior chain on the Science Live / nanopub network. |
+| `{{PRIOR_CHAIN_DESCRIPTION}}` | *(Optional, only if URI above is filled)* One-line description of the prior chain — e.g. `"Iberian Bombus FORRT constellation — Synthesis-level CiTO"`. |
 
 For tokens that don't apply yet (e.g. `{{ZENODO_DOI}}` — minted at first release), leave them as-is and tell the user they'll be filled in later.
+
+**Handling the optional prior-chain URI**: if the user provides `{{PRIOR_CHAIN_URI}}`, substitute both that and `{{PRIOR_CHAIN_DESCRIPTION}}` normally. If the user leaves it blank, **delete the entire `- type: generic` references entry block** from `CITATION.cff` (the block spanning the introductory comment lines through the `notes:` line). Otherwise the unsubstituted `{{...}}` tokens will fail the first-run guard in `CLAUDE.md`.
 
 ## Step 4 — Substitute
 
