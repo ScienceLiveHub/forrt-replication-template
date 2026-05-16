@@ -38,7 +38,7 @@ Before doing any other work in this repository, run this check:
 grep -r \
   --include='*.md' --include='*.yml' --include='*.json' --include='*.yaml' \
   --include='*.cff' --include='*.toml' \
-  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
+  --include='Dockerfile' --include='LICENSE' \
   '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' | head
 ```
 

@@ -15,7 +15,7 @@ Verify this is a freshly-instantiated template:
 grep -rln '{{[A-Z_]\+}}' . \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
-  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
+  --include='Dockerfile' --include='LICENSE' \
   2>/dev/null | grep -v '^./.claude/' | head
 ```
 
@@ -74,7 +74,7 @@ files=$(grep -rln '{{[A-Z_]\+}}' . \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='*.py' \
-  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
+  --include='Dockerfile' --include='LICENSE' \
   2>/dev/null | grep -v '^./.git/' | grep -v '^./.claude/skills/init-template/')
 
 # For each placeholder, sed-replace
