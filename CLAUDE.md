@@ -57,7 +57,11 @@ A complete replication moves through six phases. Each phase has artefacts and ex
 
 Exit: `git status` is clean and the first commit is on `main`.
 
-### Phase 1 — Paper analysis
+### Phase 1 — Paper analysis (or nanopub chain import)
+
+This phase has two valid entry points; choose based on whether the upstream paper already has FORRT chains on the network (see `docs/nanopub-chain-discovery.md`).
+
+**Entry point A — Paper-rooted (default)**
 
 - The paper has been read end-to-end (use `Read` on the PDF, page by page if large).
 - The **headline claim sentence** has been quoted verbatim from the paper into `nanopubs/drafts/01_quote.md`. This is the sentence the replication will test or extend. Verbatim means character-for-character; paraphrase is forbidden (`docs/verify-before-drafting.md`).
@@ -66,7 +70,18 @@ Exit: `git status` is clean and the first commit is on `main`.
 
 Hand the user the `paper-analyst` agent (`.claude/agents/paper-analyst.md`) when starting this phase.
 
-Exit: a complete `nanopubs/drafts/01_quote.md` with verified verbatim quote and DOI.
+**Entry point B — Nanopub-rooted**
+
+When at least one FORRT chain on the upstream paper already exists on the Science Live / nanopub network and the new replication should extend, qualify, or build on it:
+
+- The user provides a published nanopub URI (typically a CiTO Citation or a Research Synthesis at the apex of an existing chain).
+- The `/import-from-nanopub` skill (`.claude/skills/import-from-nanopub/SKILL.md`) walks the citation + provenance graph from that URI, fetches every reachable nanopub, and writes `nanopubs/imported/CHAIN_SUMMARY.md` — the prior-work analogue of `00_paper_summary.md`.
+- The user reads `CHAIN_SUMMARY.md` to see what's already been tested by whom, with what scope/method, with what Outcome and CiTO relation.
+- The new chain's CiTO relation is then chosen relative to the prior constellation (typically `extends` or `qualifies`).
+
+This entry point can be combined with Entry point A: run the import first to see the prior-work landscape, then read the paper PDF to verify the verbatim Quote sentence. The two outputs (`nanopubs/imported/CHAIN_SUMMARY.md` + `nanopubs/drafts/01_quote.md`) compose cleanly.
+
+Exit (either entry point): a complete `nanopubs/drafts/01_quote.md` with verified verbatim quote and DOI, plus — if Entry point B was used — `nanopubs/imported/CHAIN_SUMMARY.md` summarising the prior constellation.
 
 ### Phase 2 — Code & data port
 
@@ -170,6 +185,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Archive HEALPix EO data as GRID4EARTH / EOPF Zarr | `docs/eopf-zarr-conversion.md` |
 | Verify a published FORRT chain's internal + external consistency | `/verify-chain` skill (`.claude/skills/verify-chain/SKILL.md`) |
 | Deposit the work as a Rohub Research Object | `docs/rohub-deposit.md` + `scripts/build-rohub-manifest.py` |
+| Seed Phase 1 from a published nanopub URI (instead of a paper PDF) | `/import-from-nanopub` skill (`.claude/skills/import-from-nanopub/SKILL.md`) + `docs/nanopub-chain-discovery.md` |
 
 ## When in doubt
 
