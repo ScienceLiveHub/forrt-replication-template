@@ -121,7 +121,38 @@ Substituted placeholder tokens with author and paper details.
 
 (Honour the `add_co_authored_by_claude_trailer` setting from Step 6.)
 
-## Step 9 — Self-removal
+## Step 9 — Import the prior FORRT chain (if URI was provided)
+
+If the user provided a value for `{{PRIOR_CHAIN_URI}}` at Step 3 (i.e. this replication extends a prior chain on the Science Live / nanopub network), now chain into the `/import-from-nanopub` skill's work so the resulting repo is fully set up — claim layer summarised, infrastructure-layer sibling repos cloned, starter files staged — by the time `/init-template` finishes.
+
+If the user left `{{PRIOR_CHAIN_URI}}` blank, skip this step entirely (you should have already deleted the `type: generic` references entry from `CITATION.cff` in Step 3 / Step 4).
+
+Otherwise:
+
+### Step 9a — Run the importer script
+
+```bash
+python3 scripts/import-nanopub-chain.py "<PRIOR_CHAIN_URI>"
+```
+
+This single command does both layers in one pass:
+
+- **Claim layer**: SPARQL-walks the citation graph from the entry URI, fetches every reachable nanopub, caches each TriG to `nanopubs/imported/trig/<RA-id>.trig`, writes `nanopubs/imported/constellation.json` + `cited_papers.txt`.
+- **Infrastructure layer**: resolves each Outcome / Research Software nanopub's `hasOutcomeRepository` URI (GitHub URLs handled directly, Zenodo DOIs resolved via the Zenodo REST API's `related_identifiers`), `git clone`s each sibling repo into `../`, copies starter files (`environment.yml`, `Snakefile`, `notebooks/01_data_download.py`, `02_data_clean.py`, `Dockerfile`) from the canonical sibling into `_template_from_prior/` with provenance headers, and writes `nanopubs/imported/SETUP_INHERITED.md`.
+
+Network access is required. The script depends on `rdflib` (already in the conda env spec).
+
+### Step 9b — Generate the claim-layer summary
+
+Read the resulting `nanopubs/imported/constellation.json` and the cached TriG files in `nanopubs/imported/trig/`, then write `nanopubs/imported/CHAIN_SUMMARY.md` following the structure documented in `.claude/skills/import-from-nanopub/SKILL.md` Step 5. The summary should name the upstream paper, list each chain's Outcome verdict + CiTO relation, surface the methodological precedents to inherit, and end with 3–5 open questions for the user to answer before drafting any nanopubs in Phase 1.
+
+### Step 9c — Don't commit the imports
+
+`nanopubs/imported/` and `_template_from_prior/` are both gitignored (see `.gitignore`). The persistent contract to the prior chain is the URI in `CITATION.cff` `references:` (already substituted in Step 4); the local cache + staging area are derived artefacts that re-run whenever `/import-from-nanopub` is invoked.
+
+Do NOT `git add` any of those paths in Step 10. If you accidentally do, `git status` will show them as new files because `.gitignore` excludes the *unrelated* path; `git add` is permissive about gitignored paths if you list them explicitly. Just don't.
+
+## Step 10 — Self-removal
 
 This skill should not exist in the resulting repo. Remove the entire `.claude/skills/init-template/` directory:
 
@@ -136,7 +167,7 @@ git add -A
 git commit -m "Remove init-template skill (one-shot, no longer needed)"
 ```
 
-## Step 10 — Report
+## Step 11 — Report
 
 Tell the user, in this order, with the push reminder loud and unmissable:
 
@@ -148,9 +179,13 @@ Tell the user, in this order, with the push reminder loud and unmissable:
    ```
 
    This is the single most common confusion after `/init-template`. State it explicitly even if it feels redundant.
-3. **The next phase**: read `paper/` (drop the PDF in there if not already), then run `/agent paper-analyst` to start Phase 1.
-4. **The pending placeholder `{{ZENODO_DOI}}`** — filled in after the first GitHub release.
-5. **GitHub email verification reminder** at <https://github.com/settings/emails> if the user hasn't already verified the email used for git commits.
+3. **If a prior chain was imported in Step 9** — surface this prominently:
+
+   > *"The prior chain `<URI>` has been imported. Claim-layer summary at `nanopubs/imported/CHAIN_SUMMARY.md` (read this alongside the paper PDF when you start Phase 1 paper analysis). Infrastructure-layer inheritance has cloned `<N>` sibling repos and staged starter files at `_template_from_prior/` — review each staged file, merge into your own repo's corresponding location, then delete the staging directory."*
+
+4. **The next phase**: read `paper/` (drop the PDF in there if not already), then run `/agent paper-analyst` to start Phase 1.
+5. **The pending placeholder `{{ZENODO_DOI}}`** — filled in after the first GitHub release.
+6. **GitHub email verification reminder** at <https://github.com/settings/emails> if the user hasn't already verified the email used for git commits.
 
 ## Failure modes
 
