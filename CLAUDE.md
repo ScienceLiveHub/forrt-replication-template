@@ -35,7 +35,11 @@ The FORRT nanopublication chain itself is what makes **R1.2 (provenance)** machi
 Before doing any other work in this repository, run this check:
 
 ```bash
-grep -r --include='*.md' --include='*.yml' --include='*.json' --include='*.yaml' --include='*.cff' --include='*.toml' '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' | head
+grep -r \
+  --include='*.md' --include='*.yml' --include='*.json' --include='*.yaml' \
+  --include='*.cff' --include='*.toml' \
+  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
+  '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' | head
 ```
 
 If the output contains any unsubstituted `{{...}}` token, the template has not been initialised. **Stop**, tell the user:

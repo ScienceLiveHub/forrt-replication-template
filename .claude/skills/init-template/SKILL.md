@@ -12,7 +12,11 @@ You're invoked the first time a user opens Claude in a repository that was creat
 Verify this is a freshly-instantiated template:
 
 ```bash
-grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' --include='*.cff' --include='*.toml' 2>/dev/null | grep -v '^./.claude/' | head
+grep -rln '{{[A-Z_]\+}}' . \
+  --include='*.md' --include='*.yml' --include='*.yaml' \
+  --include='*.json' --include='*.cff' --include='*.toml' \
+  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
+  2>/dev/null | grep -v '^./.claude/' | head
 ```
 
 If no tokens are found, tell the user the repo is already initialised and exit.
@@ -70,6 +74,7 @@ files=$(grep -rln '{{[A-Z_]\+}}' . \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='*.py' \
+  --include='Dockerfile' --include='LICENSE' --include='Snakefile' \
   2>/dev/null | grep -v '^./.git/' | grep -v '^./.claude/skills/init-template/')
 
 # For each placeholder, sed-replace
