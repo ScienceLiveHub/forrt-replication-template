@@ -75,16 +75,37 @@ The **local cache** (`nanopubs/imported/`) is **gitignored**. It contains:
 
 - `constellation.json` — the graph structure of fetched nanopubs
 - `trig/*.trig` — cached TriG for each fetched nanopub
-- `CHAIN_SUMMARY.md` — the AI-generated human-readable summary
+- `CHAIN_SUMMARY.md` — the AI-generated human-readable summary (claim layer)
+- `SETUP_INHERITED.md` — the auto-generated report of which sibling repos were cloned and which files were staged (infrastructure layer)
 - `cited_papers.txt` — external DOIs referenced by the chain
 
-All four are *derived artefacts*. Mirroring them into every replication repo would:
+All are *derived artefacts*. Mirroring them into every replication repo would:
 
 1. Duplicate network data into git (the network is authoritative; nanopubs are immutable, identified by URI).
 2. Risk silent drift — if the upstream constellation gains a new sibling chain or supersedure, our committed snapshot becomes stale without warning.
 3. Bloat the repo with content that's reproducible from a single line of YAML.
 
 Add the URI to `CITATION.cff`; let the cache live and die in `nanopubs/imported/`.
+
+## Infrastructure-layer inheritance (`SETUP_INHERITED.md` + `_template_from_prior/`)
+
+`/import-from-nanopub` operates on two complementary axes:
+
+1. **Claim layer**: walk the citation graph, summarise the FORRT chain steps (Quote → AIDA → Claim → Study → Outcome → CiTO + Synthesis), output a human-/AI-readable `CHAIN_SUMMARY.md`. This is the "what was published" axis.
+
+2. **Infrastructure layer**: discover the GitHub repositories underlying each prior chain (from `hasOutcomeRepository` triples in the Outcome / Research Software nanopubs — resolves GitHub URLs and Zenodo DOIs alike), `git clone` them as siblings of your current repo (default `../`), and stage reusable starter files into `_template_from_prior/`. This is the "what was built" axis — gives you a workspace that starts where the prior replication ended, not a blank one.
+
+The inherited files are deliberately staged to `_template_from_prior/` rather than the new repo's actual locations:
+
+- `_template_from_prior/environment.yml` — pinned dependencies from the canonical sibling
+- `_template_from_prior/Snakefile` — workflow scaffold
+- `_template_from_prior/notebooks/01_data_download.py` — data-access patterns (GBIF pre-minted-DOI, Polytope for DestinE, Figshare for CRU TS, etc.)
+- `_template_from_prior/notebooks/02_data_clean.py` — cleaning patterns
+- `_template_from_prior/Dockerfile` — container scaffold
+
+Each file gets a provenance header noting where it came from. The user reviews each and merges into the corresponding location in their own repo, then deletes `_template_from_prior/`. **The staging directory is one-shot reference, not durable repo state — don't commit it.**
+
+To disable cloning while still doing claim-layer import, pass `--no-clone-siblings`. To skip the whole infrastructure layer (pure claim-only import), pass `--no-inherit`.
 
 ## Companion artefacts
 

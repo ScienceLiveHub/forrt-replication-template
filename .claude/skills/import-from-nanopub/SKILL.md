@@ -54,16 +54,27 @@ If the response is empty or 404, stop. Tell the user: *"That URI does not resolv
 python3 scripts/import-nanopub-chain.py <ENTRY-URI>
 ```
 
-What this does:
+What this does, in two layers:
 
-- BFS-walks the citation + provenance graph from the entry URI, fetching every reachable nanopub (default depth 5, default cap 80 nodes — generous, almost any real constellation fits)
-- Caches each fetched TriG to `nanopubs/imported/trig/<RA-id>.trig` so re-runs are fast
-- Writes `nanopubs/imported/constellation.json` — structured graph: nodes (URI → step type → key fields) + edges (CiTO + provenance relations)
-- Writes `nanopubs/imported/cited_papers.txt` — external (non-nanopub) URIs cited, typically the upstream paper DOI(s)
+**Claim-layer import** (the "what was published" axis):
 
-Network access is required. The script is dependency-light: stdlib + `rdflib`. If `rdflib` is missing, the script prints a clear error; install with `pip install rdflib` in the same env you run the other replication scripts in.
+- BFS-walks the citation + provenance graph via SPARQL queries (`scripts/queries/`) against `https://query.knowledgepixels.com/repo/full` and fetches every reachable nanopub (default depth 5, default cap 80 nodes).
+- Caches each fetched TriG to `nanopubs/imported/trig/<RA-id>.trig`.
+- Writes `nanopubs/imported/constellation.json` — structured graph: nodes (URI → step type → key fields) + edges (CiTO + provenance relations).
+- Writes `nanopubs/imported/cited_papers.txt` — external (non-nanopub) URIs, typically the upstream paper DOI(s).
 
-If the user has no network (e.g. air-gapped HPC), they should run this step on a different machine and copy the `nanopubs/imported/` directory across.
+**Infrastructure-layer inheritance** (the "what was built" axis):
+
+- Scans each Outcome / Research Software nanopub for a `hasOutcomeRepository` URI (which may be either a GitHub URL or a Zenodo DOI — both are handled; Zenodo DOIs are resolved to GitHub URLs via Zenodo's `related_identifiers` API).
+- **`git clone`s each sibling repository** into `--siblings-dir` (default `../`, matching the convention of keeping related replication repos as filesystem siblings).
+- Copies a curated set of starter files from the first cloned sibling into `_template_from_prior/` (`--staging-dir`): `environment.yml`, `Snakefile`, `notebooks/01_data_download.py`, `notebooks/02_data_clean.py`, `Dockerfile`. Each file gets a provenance header.
+- Writes `nanopubs/imported/SETUP_INHERITED.md` documenting which sibling URLs were resolved, where they were cloned, which files were staged, and what to do with them.
+
+To disable the infrastructure layer (claim-only import), pass `--no-inherit`. To skip cloning but still attempt inheritance from already-present sibling clones, pass `--no-clone-siblings`.
+
+Network access is required. The script is dependency-light: stdlib + `rdflib` + `git`. If `rdflib` is missing, the script prints a clear error; install with `pip install rdflib` in the same env you run the other replication scripts in.
+
+If the user has no network (e.g. air-gapped HPC), they should run this step on a different machine and copy the `nanopubs/imported/` directory across (note: `_template_from_prior/` and sibling clones live outside `nanopubs/imported/` and need separate transfer).
 
 ### Step 4 — Read constellation.json and the cached TriG
 
@@ -176,6 +187,14 @@ After `CHAIN_SUMMARY.md` is written, tell the user:
 
 **The cache is gitignored on purpose.** Nanopubs are immutable on the network and identified by their URI. Mirroring them into each replication repo creates inconsistency risk (the local snapshot can diverge from the live network) and bloats repos with derived data. The persistent contract is the URI in `CITATION.cff`; the cache is ephemeral.
 
+### Step 7 — Hand off the infrastructure-inheritance staging area
+
+If `SETUP_INHERITED.md` reports that files were copied to `_template_from_prior/`, also tell the user:
+
+> *"The infrastructure-layer inheritance has staged `<N>` starter files at `_template_from_prior/`, copied from the canonical sibling chain. These include `environment.yml`, `Snakefile`, and `notebooks/01_data_download.py` — read the SETUP_INHERITED.md table for the full list and provenance. **Review each staged file, merge with your own at the corresponding path, then delete `_template_from_prior/`.** This staging directory is a one-shot reference area, NOT durable repo state. Do not commit it."*
+>
+> *If you opted out of cloning (`--no-clone-siblings`) or no `hasOutcomeRepository` URIs were found in the imported nanopubs, the staging area is empty and only the resolved URLs appear in `SETUP_INHERITED.md` for your reference.*
+
 ## Failure modes
 
 - **Empty constellation (0 nodes fetched)** — entry URI didn't resolve, or the BFS hit a non-Science-Live URI immediately. Re-verify the entry URI via Step 2.
@@ -183,6 +202,9 @@ After `CHAIN_SUMMARY.md` is written, tell the user:
 - **All `step_type = "Unknown"`** — the template-URI heuristics in the script didn't match. Read the TriG manually and infer step types; if a new template family is being used, extend `STEP_TYPE_HINTS` in `scripts/import-nanopub-chain.py`.
 - **Verbatim text excerpts are short / cryptic** — the heuristic `extract_plain_text` returns the longest literals first, but for some nanopubs the substantive content is in `rdfs:label` of nested entities. Open the cached TriG and read manually.
 - **Cycle in the citation graph** — the BFS uses a `visited` set so cycles are not a hazard, but `prov:wasDerivedFrom` chains can be long; if the BFS feels slow, lower `--depth`.
+- **`Could not resolve <Zenodo DOI> to a GitHub URL`** — the Zenodo record's `related_identifiers` don't include a GitHub link. Common in older deposits; the user can manually add the GitHub URL to the prior chain's CITATION.cff via a separate commit, or just visit the Zenodo page and clone the linked repo manually.
+- **`git clone failed`** — repo is private, network down, or rate-limited. Fall back to `--no-clone-siblings` and tell the user to clone manually.
+- **Inherited file conflicts** — `_template_from_prior/` files start fresh each import. If you re-run with different siblings, prior staging is overwritten. Don't store work-in-progress edits in `_template_from_prior/`.
 
 ## Companion docs
 

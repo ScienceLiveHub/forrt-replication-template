@@ -28,6 +28,12 @@ data/*
 # See docs/nanopub-chain-discovery.md.
 nanopubs/imported/
 
+# Staging area for files inherited from a prior chain's sibling repos
+# by `/import-from-nanopub`. One-shot reference area — review the files,
+# merge into your own repo's corresponding locations, then delete this
+# directory. NEVER committed; recreate by re-running the import skill.
+_template_from_prior/
+
 # Paper PDFs (single PDF allowed; subfolder build artefacts ignored)
 paper/_build/
 paper/.tmp/
