@@ -164,11 +164,17 @@ Keep the summary **factual and short**. Do not editorialise. The user (and
 the `paper-analyst` agent that runs next) will read this to position the new
 replication.
 
-### Step 6 — Hand off to Phase 1
+### Step 6 — Hand off to Phase 1 + persist only the URI
 
 After `CHAIN_SUMMARY.md` is written, tell the user:
 
-> *"Imported `<N>` nanopubs from the constellation rooted at `<entry-URI>`. Summary at `nanopubs/imported/CHAIN_SUMMARY.md`. Open questions are listed at the bottom — answer those before drafting any nanopubs. Then either: (a) place the upstream paper PDF at `paper/<name>.pdf` and run the `paper-analyst` agent in Phase 1 with `CHAIN_SUMMARY.md` as the prior-work context, or (b) skip directly to Phase 2 if the new replication is a pure method-extension of a prior chain and doesn't need fresh paper analysis."*
+> *"Imported `<N>` nanopubs from the constellation rooted at `<entry-URI>`. Summary at `nanopubs/imported/CHAIN_SUMMARY.md` (local cache — **gitignored, do NOT commit**).*
+>
+> *The persistent pointer to this prior chain is the entry URI itself, which should be added to `CITATION.cff` `references:` as a `type: generic` entry with `url:` set to the URI. That way anyone cloning the repo can regenerate the local cache by re-running `/import-from-nanopub <URI>` — the nanopub network is the single source of truth, not a committed snapshot.*
+>
+> *Open questions are listed at the bottom of `CHAIN_SUMMARY.md` — answer those before drafting any nanopubs. Then either: (a) place the upstream paper PDF at `paper/<name>.pdf` and run the `paper-analyst` agent in Phase 1 with `CHAIN_SUMMARY.md` as the prior-work context, or (b) skip directly to Phase 2 if the new replication is a pure method-extension of a prior chain and doesn't need fresh paper analysis."*
+
+**The cache is gitignored on purpose.** Nanopubs are immutable on the network and identified by their URI. Mirroring them into each replication repo creates inconsistency risk (the local snapshot can diverge from the live network) and bloats repos with derived data. The persistent contract is the URI in `CITATION.cff`; the cache is ephemeral.
 
 ## Failure modes
 

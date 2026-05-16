@@ -67,8 +67,28 @@ If the step-type breakdown the importer prints doesn't match what the user expec
 - **No signature verification.** The script trusts the nanopub network's HTTP resolver. For full cryptographic verification, use the `nanopub` PyPI package's `Nanopub.verify_signature()` method.
 - **No deduplication of trivially-equal nanopubs across signatures.** A Quote nanopub shared across three chains is fetched once (deduplication by URI) but if the chains used three separately-signed identical Quotes, those would appear as three nodes. This is fine — the chains are still walkable.
 
+## What gets committed to git, and what doesn't
+
+The **persistent contract** to the prior chain is **the entry URI itself**, written to `CITATION.cff` `references:` as a `type: generic` entry with `url:` set to the apex CiTO URI. Anyone cloning the repo regenerates the local cache by re-running `/import-from-nanopub <URI>`. The nanopub network is the single source of truth.
+
+The **local cache** (`nanopubs/imported/`) is **gitignored**. It contains:
+
+- `constellation.json` — the graph structure of fetched nanopubs
+- `trig/*.trig` — cached TriG for each fetched nanopub
+- `CHAIN_SUMMARY.md` — the AI-generated human-readable summary
+- `cited_papers.txt` — external DOIs referenced by the chain
+
+All four are *derived artefacts*. Mirroring them into every replication repo would:
+
+1. Duplicate network data into git (the network is authoritative; nanopubs are immutable, identified by URI).
+2. Risk silent drift — if the upstream constellation gains a new sibling chain or supersedure, our committed snapshot becomes stale without warning.
+3. Bloat the repo with content that's reproducible from a single line of YAML.
+
+Add the URI to `CITATION.cff`; let the cache live and die in `nanopubs/imported/`.
+
 ## Companion artefacts
 
 - `.claude/skills/import-from-nanopub/SKILL.md` — the orchestrating skill.
 - `scripts/import-nanopub-chain.py` — the BFS + parser script.
-- `nanopubs/imported/` — output directory (created on first run; gitignored by default — these are derived artefacts, not committed).
+- `scripts/queries/*.rq` — SPARQL queries (vendored from `science-live-platform/frontend/src/lib/queries/`).
+- `nanopubs/imported/` — gitignored local cache (created on first run, regenerable on demand).
