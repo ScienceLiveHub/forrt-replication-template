@@ -21,6 +21,8 @@ This checklist exists because it is unreasonably easy to ship a partial draft th
 
 Form heading: *"Annotate a paper quotation — Annotating a paper quotation with personal interpretation"*
 
+> ⚠️ **500-character limit applies to BOTH the Quoted Text AND the Comment fields.** The Quoted Text limit is hard (the form enforces it in "Quote whole text" mode). The Comment limit is the discipline target — drafts that run over should be trimmed before publishing. If your verbatim quote is longer than 500 chars, switch the radio button to **Quote start/end** mode and use start-phrase + end-phrase to mark a longer span instead of pasting the whole text.
+
 | Field label | Field type | Notes |
 |---|---|---|
 | Cited DOI | text input | Format: starts with `10.` — placeholder reads "DOI, starting with 10." So enter `10.3389/fmars.2025.1699781`, **NOT** `https://doi.org/10.3389/...` |
