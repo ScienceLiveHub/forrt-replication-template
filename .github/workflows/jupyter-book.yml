@@ -26,7 +26,8 @@ jobs:
       - name: Skip if template has not been initialised
         id: guard
         run: |
-          if grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' --include='*.cff' --include='*.py' --include='*.toml' 2>/dev/null | grep -v '^./.claude/skills/init-template/' | head -1 > /dev/null; then
+          placeholder_files=$(grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' --include='*.cff' --include='*.py' --include='*.toml' 2>/dev/null | grep -v 'claude/skills/init-template/' || true)
+          if [ -n "$placeholder_files" ]; then
             echo "::notice::Template placeholders detected ({{...}} tokens). Run /init-template inside Claude Code (or substitute manually) before the Jupyter Book builds meaningfully. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
@@ -39,7 +40,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh api "repos/${{ github.repository }}/pages" 2>/dev/null | head -1 > /dev/null; then
+          if gh api "repos/${{ github.repository }}/pages" >/dev/null 2>&1; then
             echo "::notice::GitHub Pages is enabled — Jupyter Book will deploy."
             echo "pages_enabled=true" >> "$GITHUB_OUTPUT"
           else
