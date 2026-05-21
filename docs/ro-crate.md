@@ -20,7 +20,7 @@ The default `ro-crate-metadata.json` lists:
 - **Workflow** — `Snakefile` typed as `SoftwareSourceCode` + `ComputationalWorkflow`, with declared inputs and outputs.
 - **Notebooks** — each `notebooks/*.py` typed as `SoftwareSourceCode` + `Notebook`.
 - **Datasets** — `paper/`, `data/`, `results/`, `figures/` typed as `Dataset` with descriptions.
-- **Configuration files** — `environment.yml`, `Dockerfile` typed as `ConfigurationFile`.
+- **Configuration files** — `pixi.toml`, `pixi.lock`, `Dockerfile` typed as `ConfigurationFile`.
 - **Citation** — back-link to the original paper DOI as `ScholarlyArticle`.
 - **Nanopub registry** — `nanopubs/PUBLISHED.md` typed as `TextObject` with description pointing to the FORRT chain.
 

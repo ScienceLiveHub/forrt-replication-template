@@ -94,7 +94,8 @@ _GITHUB_RE = re.compile(
 # merges what they want into the new repo. Add to this list iteratively
 # as patterns emerge.
 SIBLING_INHERITED_FILES = [
-    "environment.yml",
+    "pixi.toml",
+    "pixi.lock",
     "Snakefile",
     "notebooks/01_data_download.py",
     "notebooks/02_data_clean.py",
@@ -620,10 +621,11 @@ def write_setup_inherited(out_path: Path,
     lines.extend([
         "## Suggested next steps",
         "",
-        "1. Open `_template_from_prior/environment.yml` and merge its pinned",
-        "   dependency versions into your own `environment.yml` (the staging",
-        "   file inherits Soroye-2020-era pins; add domain packages for your",
-        "   replication).",
+        "1. Open `_template_from_prior/pixi.toml` and merge its declared",
+        "   dependencies into your own `pixi.toml`; the matching",
+        "   `_template_from_prior/pixi.lock` carries the prior chain's",
+        "   per-platform pinned versions. After merging, run `pixi install`",
+        "   to refresh your own `pixi.lock`, then commit both files.",
         "2. Open `_template_from_prior/notebooks/01_data_download.py` to see",
         "   how the prior chain fetched climate / occurrence / paper data.",
         "   The patterns there — GBIF pre-minted-download style, Polytope",

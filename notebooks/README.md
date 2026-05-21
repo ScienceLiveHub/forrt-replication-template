@@ -27,7 +27,7 @@ When you add a notebook:
 2. Add it to `myst.yml` TOC as `notebooks/0X_….ipynb` (note: `.ipynb`, not `.py`; MyST cannot process `.py`).
 3. Add a Snakefile rule that wraps it.
 4. The `.github/workflows/jupyter-book.yml` "Execute notebooks" step uses a glob (`notebooks/*.ipynb`), so new notebooks are picked up automatically — no workflow edit needed.
-5. Add every import in the new notebook to `environment.yml`.
+5. Add every import in the new notebook to `pixi.toml`, then `pixi install` and commit the refreshed `pixi.lock`.
 
 ## Anti-patterns
 

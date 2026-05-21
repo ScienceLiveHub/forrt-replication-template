@@ -28,7 +28,7 @@ When the user asks Claude to set up a typical analysis, the default tools to sug
 | Raster / vector I/O | `rasterio`, `geopandas` | |
 | Scattering on the sphere | `foscat>=2026.4.1` | upstream PyPI; CPU auto-detection |
 
-Pin every dependency in `environment.yml` — pangeo dev environments hide missing deps locally and CI then silently fails with empty notebook cells.
+Pin every dependency in `pixi.toml` and commit the regenerated `pixi.lock` — pangeo dev environments hide missing deps locally and CI then silently fails with empty notebook cells.
 
 ## Domain conventions
 

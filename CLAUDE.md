@@ -25,7 +25,7 @@ Key FAIR4RS handles in this template:
 
 - **F (Findable)** — Zenodo concept DOI minted at first release; `CITATION.cff` + `codemeta.json` populated; GitHub topics suggested in `README.md`.
 - **A (Accessible)** — public GitHub repo, MIT license, GHCR image, Zenodo archive of the source tarball and (optionally) the Docker image, so the software remains accessible even if GitHub or GHCR disappears.
-- **I (Interoperable)** — `environment.yml` is the single declarative source of truth; standard formats (jupytext `.py` notebooks, parquet/CSV/NetCDF data, OCI Docker image); cross-references to upstream paper DOI, dataset DOIs, and FORRT nanopub URIs use qualified relations.
+- **I (Interoperable)** — `pixi.toml` + `pixi.lock` are the single declarative source of truth (the lockfile pins every package per platform); standard formats (jupytext `.py` notebooks, parquet/CSV/NetCDF data, OCI Docker image); cross-references to upstream paper DOI, dataset DOIs, and FORRT nanopub URIs use qualified relations.
 - **R (Reusable)** — explicit MIT license, detailed provenance via the FORRT chain (every claim traceable to data + method + author ORCID), `CITATION.cff` lists upstream paper as a `references` entry, `codemeta.json` lists `softwareRequirements` and `referencePublication`.
 
 The FORRT nanopublication chain itself is what makes **R1.2 (provenance)** machine-actionable: it does what `CITATION.cff` cannot, by separating *claims about the world* from *facts about the software*, with cryptographically signed nanopubs at each step.
@@ -89,7 +89,7 @@ Exit (either entry point): a complete `nanopubs/drafts/01_quote.md` with verifie
 
 ### Phase 2 — Code & data port
 
-- `environment.yml` lists every dependency the notebooks import (`docs/cicd-conventions.md` § environment.yml is the single source of truth).
+- `pixi.toml` lists every dependency the notebooks import, and `pixi.lock` is regenerated and committed alongside it (`docs/cicd-conventions.md` § pixi.toml is the single source of truth).
 - `notebooks/01_data_download.py` fetches all input data — no manual steps.
 - `notebooks/02_data_clean.py` produces a tidy intermediate dataset.
 - `notebooks/03_analysis.py` reproduces the paper's headline statistic.
@@ -180,7 +180,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Choose the FORRT Claim type | `docs/claim-type-vocabulary.md` |
 | Write the Quote, Study, or Outcome | `docs/verify-before-drafting.md` |
 | Write a PICO or PCC question | `docs/pico-study-outcome-levels.md` |
-| Touch CI / environment.yml / Dockerfile / myst.yml | `docs/cicd-conventions.md` |
+| Touch CI / pixi.toml / Dockerfile / myst.yml | `docs/cicd-conventions.md` |
 | Cut a release / claim a phase done | `docs/fair4rs-checklist.md` |
 | Update RO-Crate metadata after adding artefacts | `docs/ro-crate.md` |
 | Need to retract / supersede / batch-publish a nanopub | `docs/programmatic-nanopubs.md` |

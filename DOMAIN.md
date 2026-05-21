@@ -31,7 +31,7 @@ When the user asks Claude to set up a typical analysis, the default tools to sug
 | Intermediate / archival arrays | `netCDF4` (small ≤2 GB), `zarr` (larger / cloud) | **never `.npz`** — see Data formats convention below |
 | HEALPix-indexed EO archival | EOPF Zarr (Earth Observation Processing Framework profile) | Standardised metadata for HEALPix dim-naming, NESTED ordering, projection. See [`EOPF-DGGS/legacy-converters`](https://github.com/EOPF-DGGS/legacy-converters) for conversion patterns. |
 
-Pin every dependency in `environment.yml` — pangeo dev environments hide missing deps locally and CI then silently fails with empty notebook cells.
+Pin every dependency in `pixi.toml` and commit the regenerated `pixi.lock` — pangeo dev environments hide missing deps locally and CI then silently fails with empty notebook cells.
 
 ## Domain conventions
 

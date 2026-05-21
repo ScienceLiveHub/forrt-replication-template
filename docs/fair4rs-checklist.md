@@ -86,8 +86,8 @@ Public release artefacts are anonymous-accessible. Private upstream data sources
 
 | Where | Evidence |
 |---|---|
-| `environment.yml` declarative dependency manifest | conda/pip standard format. |
-| `Dockerfile` based on `mambaorg/micromamba` | OCI-compliant container. |
+| `pixi.toml` + `pixi.lock` declarative dependency manifest | TOML manifest + per-platform lockfile pinning every package to an exact build hash; conda + PyPI sources. |
+| `Dockerfile` based on `ghcr.io/prefix-dev/pixi` | OCI-compliant container; image installs from `pixi.lock` so the container env is byte-identical to local + CI. |
 | Notebook outputs | NetCDF, parquet, CSV, GeoTIFF — all open, community-standard formats. |
 | Jupyter Book + jupytext `.py` source-of-truth | open notebook formats; `.py` is round-trippable to `.ipynb`. |
 
@@ -139,7 +139,7 @@ A reader who finds this software via its Zenodo DOI can follow the references to
 
 | Where | Evidence |
 |---|---|
-| `environment.yml` and `codemeta.json` `softwareRequirements` | declared upstream dependencies. |
+| `pixi.toml` (+ `pixi.lock`) and `codemeta.json` `softwareRequirements` | declared upstream dependencies; the lockfile additionally pins each upstream package to an exact build hash. |
 | Research Software nanopub for upstream tools (when applicable) | the upstream library (e.g. `foscat`, `planktonclas`) gets its own Research Software nanopub that the FORRT Outcome cites. |
 
 If your replication's reusable artefact is an upstream library (not just a one-off demo), publish a separate Research Software nanopub for the upstream tool. See `CLAUDE.md` § Layered architecture: FORRT vs Research Software, and `docs/forrt-form-fields.md` § Research Software.
@@ -160,8 +160,8 @@ Run this list before cutting any GitHub release:
 
 - [ ] `CITATION.cff` `version` and `date-released` updated.
 - [ ] `codemeta.json` `version` and `dateModified` updated.
-- [ ] All `{{...}}` placeholder tokens substituted (run `grep -r '{{' . --include='*.md' --include='*.yml' --include='*.json' --include='*.cff'`).
-- [ ] `environment.yml` lists every notebook import (`grep -h "^import\|^from" notebooks/*.py | sort -u`).
+- [ ] All `{{...}}` placeholder tokens substituted (run `grep -r '{{' . --include='*.md' --include='*.yml' --include='*.json' --include='*.cff' --include='*.toml'`).
+- [ ] `pixi.toml` lists every notebook import (`grep -h "^import\|^from" notebooks/*.py | sort -u`); `pixi.lock` is fresh (`pixi install --locked && git diff --exit-code pixi.lock`).
 - [ ] `LICENSE` carries the right author and year.
 - [ ] Release notes follow the Zenodo-description format (`docs/cicd-conventions.md` § Release notes are Zenodo descriptions).
 - [ ] If this is the first release: `CITATION.cff` `doi` field is left as `{{ZENODO_DOI}}` (the integration mints it on release; update afterwards).

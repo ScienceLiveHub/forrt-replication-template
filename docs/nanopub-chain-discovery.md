@@ -97,7 +97,7 @@ Add the URI to `CITATION.cff`; let the cache live and die in `nanopubs/imported/
 
 The inherited files are deliberately staged to `_template_from_prior/` rather than the new repo's actual locations:
 
-- `_template_from_prior/environment.yml` — pinned dependencies from the canonical sibling
+- `_template_from_prior/pixi.toml` + `_template_from_prior/pixi.lock` — pinned dependencies and per-platform lockfile from the canonical sibling
 - `_template_from_prior/Snakefile` — workflow scaffold
 - `_template_from_prior/notebooks/01_data_download.py` — data-access patterns (GBIF pre-minted-DOI, Polytope for DestinE, Figshare for CRU TS, etc.)
 - `_template_from_prior/notebooks/02_data_clean.py` — cleaning patterns
