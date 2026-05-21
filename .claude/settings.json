@@ -91,6 +91,7 @@
       "Bash(python *)",
       "Bash(python3 *)",
       "Bash(pip *)",
+      "Bash(pixi *)",
       "Bash(mamba *)",
       "Bash(micromamba *)",
       "Bash(conda *)",

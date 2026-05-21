@@ -15,9 +15,8 @@ This repository is a self-contained replication of the headline claim from the r
 ```bash
 git clone https://github.com/{{REPO_ORG}}/{{REPO_NAME}}.git
 cd {{REPO_NAME}}
-mamba env create -f environment.yml
-mamba activate {{REPO_NAME}}
-snakemake --cores 1
+pixi install
+pixi run snakemake --cores 1
 ```
 
 Or with Docker:

@@ -15,7 +15,7 @@ When the user asks Claude to set up a typical analysis, the default tools to sug
 | <e.g. tabular data> | <e.g. `pandas`> | <one-line note> |
 | ... | ... | ... |
 
-Pin every dependency in `environment.yml`.
+Pin every dependency in `pixi.toml` and commit the regenerated `pixi.lock`.
 
 ## Domain conventions
 

@@ -33,8 +33,8 @@ For each phase, dispatch to the right specialist or guide the user manually:
 |---|---|---|
 | **0 Bootstrap** | Run `/init-template`. Drop paper PDF in `paper/`. | — |
 | **1 Paper analysis** | Use the `paper-analyst` agent. Output: `nanopubs/drafts/00_paper_summary.md` + `nanopubs/drafts/01_quote.md` Quoted Text. | `Agent({subagent_type: "paper-analyst"})` |
-| **2 Code & data port** | Use the `replication-coder` agent. Update `environment.yml`, notebooks, Snakefile. | `Agent({subagent_type: "replication-coder"})` |
-| **3 Local results** | Run `snakemake --cores 1`. Compare headline number to paper. Write `nanopubs/drafts/05_outcome.md` placeholders. | manual |
+| **2 Code & data port** | Use the `replication-coder` agent. Update `pixi.toml` (+ `pixi.lock`), notebooks, Snakefile. | `Agent({subagent_type: "replication-coder"})` |
+| **3 Local results** | Run `pixi run snakemake --cores 1`. Compare headline number to paper. Write `nanopubs/drafts/05_outcome.md` placeholders. | manual |
 | **4 Release** | Run `docs/fair4rs-checklist.md` pre-release checklist. Cut a `gh release` with a Zenodo-formatted body. | manual |
 | **5 FORRT chain** | Use the `nanopub-drafter` agent for each step. User publishes each draft on platform.sciencelive4all.org and pastes the URI into `nanopubs/PUBLISHED.md`. | `Agent({subagent_type: "nanopub-drafter"})` ×6 |
 

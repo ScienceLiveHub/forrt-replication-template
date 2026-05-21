@@ -66,8 +66,8 @@ When writing notebook or script code that uses unfamiliar APIs, **run it before 
 
 ### Procedure
 
-- Try to run the code locally (`mamba env create -f environment.yml` then `mamba run -n {{REPO_NAME}} python notebooks/01_data_download.py` — the env name comes from `environment.yml`).
-- If a needed dep is missing, say "I haven't run this — would need to add `X` to `environment.yml`. Run it first?"
+- Try to run the code locally (`pixi install` then `pixi run python notebooks/01_data_download.py` — pixi reads `pixi.toml` and uses the lockfile to install a per-platform environment under `.pixi/`).
+- If a needed dep is missing, say "I haven't run this — would need to add `X` to `pixi.toml`. Run it first?"
 - **Never describe untested code as "works" or "ready"** — say "written, untested" or "written, runs in the Docker container per the API docs, not yet executed."
 - This applies especially to code using libraries with version-specific APIs (h3 v3 vs v4, rhealpixdggs, dggrid4py, foscat versions).
 
@@ -75,7 +75,7 @@ When writing notebook or script code that uses unfamiliar APIs, **run it before 
 
 In a previous DGGS replication, code using `h3` and `rhealpixdggs` was written from API documentation alone, declared "ready to commit", and then the user asked: *"did you test it locally?"* — at which point the answer had to be "no". The code did happen to work, but the right protocol is to test first or be explicit that it is untested.
 
-The cost of testing is small (one `mamba run` invocation). The cost of an incorrectly-claimed "works" is a debugging round-trip and credibility loss.
+The cost of testing is small (one `pixi run` invocation). The cost of an incorrectly-claimed "works" is a debugging round-trip and credibility loss.
 
 ---
 

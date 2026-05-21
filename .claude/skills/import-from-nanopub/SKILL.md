@@ -67,7 +67,7 @@ What this does, in two layers:
 
 - Scans each Outcome / Research Software nanopub for a `hasOutcomeRepository` URI (which may be either a GitHub URL or a Zenodo DOI — both are handled; Zenodo DOIs are resolved to GitHub URLs via Zenodo's `related_identifiers` API).
 - **`git clone`s each sibling repository** into `--siblings-dir` (default `../`, matching the convention of keeping related replication repos as filesystem siblings).
-- Copies a curated set of starter files from the first cloned sibling into `_template_from_prior/` (`--staging-dir`): `environment.yml`, `Snakefile`, `notebooks/01_data_download.py`, `notebooks/02_data_clean.py`, `Dockerfile`. Each file gets a provenance header.
+- Copies a curated set of starter files from the first cloned sibling into `_template_from_prior/` (`--staging-dir`): `pixi.toml`, `pixi.lock`, `Snakefile`, `notebooks/01_data_download.py`, `notebooks/02_data_clean.py`, `Dockerfile`. Each file gets a provenance header.
 - Writes `nanopubs/imported/SETUP_INHERITED.md` documenting which sibling URLs were resolved, where they were cloned, which files were staged, and what to do with them.
 
 To disable the infrastructure layer (claim-only import), pass `--no-inherit`. To skip cloning but still attempt inheritance from already-present sibling clones, pass `--no-clone-siblings`.
@@ -191,7 +191,7 @@ After `CHAIN_SUMMARY.md` is written, tell the user:
 
 If `SETUP_INHERITED.md` reports that files were copied to `_template_from_prior/`, also tell the user:
 
-> *"The infrastructure-layer inheritance has staged `<N>` starter files at `_template_from_prior/`, copied from the canonical sibling chain. These include `environment.yml`, `Snakefile`, and `notebooks/01_data_download.py` — read the SETUP_INHERITED.md table for the full list and provenance. **Review each staged file, merge with your own at the corresponding path, then delete `_template_from_prior/`.** This staging directory is a one-shot reference area, NOT durable repo state. Do not commit it."*
+> *"The infrastructure-layer inheritance has staged `<N>` starter files at `_template_from_prior/`, copied from the canonical sibling chain. These include `pixi.toml`, `pixi.lock`, `Snakefile`, and `notebooks/01_data_download.py` — read the SETUP_INHERITED.md table for the full list and provenance. **Review each staged file, merge with your own at the corresponding path, then delete `_template_from_prior/`.** This staging directory is a one-shot reference area, NOT durable repo state. Do not commit it."*
 >
 > *If you opted out of cloning (`--no-clone-siblings`) or no `hasOutcomeRepository` URIs were found in the imported nanopubs, the staging area is empty and only the resolved URLs appear in `SETUP_INHERITED.md` for your reference.*
 

@@ -138,9 +138,9 @@ python3 scripts/import-nanopub-chain.py "<PRIOR_CHAIN_URI>"
 This single command does both layers in one pass:
 
 - **Claim layer**: SPARQL-walks the citation graph from the entry URI, fetches every reachable nanopub, caches each TriG to `nanopubs/imported/trig/<RA-id>.trig`, writes `nanopubs/imported/constellation.json` + `cited_papers.txt`.
-- **Infrastructure layer**: resolves each Outcome / Research Software nanopub's `hasOutcomeRepository` URI (GitHub URLs handled directly, Zenodo DOIs resolved via the Zenodo REST API's `related_identifiers`), `git clone`s each sibling repo into `../`, copies starter files (`environment.yml`, `Snakefile`, `notebooks/01_data_download.py`, `02_data_clean.py`, `Dockerfile`) from the canonical sibling into `_template_from_prior/` with provenance headers, and writes `nanopubs/imported/SETUP_INHERITED.md`.
+- **Infrastructure layer**: resolves each Outcome / Research Software nanopub's `hasOutcomeRepository` URI (GitHub URLs handled directly, Zenodo DOIs resolved via the Zenodo REST API's `related_identifiers`), `git clone`s each sibling repo into `../`, copies starter files (`pixi.toml`, `pixi.lock`, `Snakefile`, `notebooks/01_data_download.py`, `02_data_clean.py`, `Dockerfile`) from the canonical sibling into `_template_from_prior/` with provenance headers, and writes `nanopubs/imported/SETUP_INHERITED.md`.
 
-Network access is required. The script depends on `rdflib` (already in the conda env spec).
+Network access is required. The script depends on `rdflib` (already in the pixi env spec).
 
 ### Step 9b — Generate the claim-layer summary
 

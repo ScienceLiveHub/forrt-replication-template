@@ -27,11 +27,11 @@ The pipeline must run end-to-end via `snakemake --cores 1` on a fresh checkout.
 3. **Port the analysis** notebook by notebook, in order (01 → 02 → 03 → 04). For each:
    - Read existing notebook content (some may be partial scaffolds).
    - Replace placeholders with real code.
-   - Update `environment.yml` with every new import — see `docs/cicd-conventions.md` § environment.yml is the single source of truth.
+   - Update `pixi.toml` with every new import (then `pixi install` to refresh `pixi.lock`; commit both) — see `docs/cicd-conventions.md` § pixi.toml is the single source of truth.
    - Update the Snakefile rules with the actual file paths.
 4. **Test before claiming done.** See `docs/verify-before-drafting.md` § Test before claiming ready.
-   - Run `snakemake --cores 1 -n` (dry run) to verify the DAG.
-   - Run the notebook(s) end-to-end via `mamba run -n <env> jupytext --to notebook --execute notebooks/0X_….py`.
+   - Run `pixi run snakemake --cores 1 -n` (dry run) to verify the DAG.
+   - Run the notebook(s) end-to-end via `pixi run jupytext --to notebook --execute notebooks/0X_….py`.
    - If you can't run something, mark it explicitly as untested in the conversation.
 
 ## Anti-patterns
@@ -44,4 +44,4 @@ The pipeline must run end-to-end via `snakemake --cores 1` on a fresh checkout.
 
 ## Output
 
-Updated notebook files in `notebooks/`, `environment.yml`, `Snakefile`. Tell the user what runs, what's untested, what you deviated from in the original paper, and what additional credentials / data DOIs they need to set up.
+Updated notebook files in `notebooks/`, `pixi.toml` (+ regenerated `pixi.lock`), `Snakefile`. Tell the user what runs, what's untested, what you deviated from in the original paper, and what additional credentials / data DOIs they need to set up.

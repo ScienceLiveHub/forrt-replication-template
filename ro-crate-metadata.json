@@ -23,7 +23,8 @@
       "mainEntity": { "@id": "Snakefile" },
       "hasPart": [
         { "@id": "Snakefile" },
-        { "@id": "environment.yml" },
+        { "@id": "pixi.toml" },
+        { "@id": "pixi.lock" },
         { "@id": "Dockerfile" },
         { "@id": "notebooks/01_data_download.py" },
         { "@id": "notebooks/02_data_clean.py" },
@@ -51,7 +52,7 @@
       "name": "Replication pipeline",
       "description": "Snakemake workflow orchestrating data download, cleaning, analysis, and figure generation.",
       "programmingLanguage": { "@id": "https://w3id.org/workflowhub/workflow-ro-crate#snakemake" },
-      "input": [{ "@id": "paper/" }, { "@id": "environment.yml" }],
+      "input": [{ "@id": "paper/" }, { "@id": "pixi.toml" }, { "@id": "pixi.lock" }],
       "output": [{ "@id": "results/" }, { "@id": "figures/" }, { "@id": "nanopubs/PUBLISHED.md" }]
     },
     {
@@ -61,9 +62,15 @@
       "url": "https://snakemake.readthedocs.io/"
     },
     {
-      "@id": "environment.yml",
+      "@id": "pixi.toml",
       "@type": ["File", "ConfigurationFile"],
-      "name": "Conda environment specification",
+      "name": "Pixi workspace manifest (declared dependencies, features, tasks)",
+      "encodingFormat": "application/toml"
+    },
+    {
+      "@id": "pixi.lock",
+      "@type": ["File", "ConfigurationFile"],
+      "name": "Pixi per-platform lockfile (every package pinned to an exact build hash)",
       "encodingFormat": "application/yaml"
     },
     {

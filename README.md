@@ -22,10 +22,11 @@ This is a self-contained replication of the headline claim of the reference pape
 ```bash
 git clone https://github.com/{{REPO_ORG}}/{{REPO_NAME}}.git
 cd {{REPO_NAME}}
-mamba env create -f environment.yml
-mamba activate {{REPO_NAME}}
-snakemake --cores 1
+pixi install
+pixi run snakemake --cores 1
 ```
+
+(Pixi resolves `pixi.toml` against the per-platform `pixi.lock`, installs the env under `.pixi/`, and provides `pixi run` for any task without needing an `activate` step.)
 
 Or with Docker:
 
@@ -58,7 +59,7 @@ After `/init-template`, do these one-time setup steps to enable the full CI/CD p
 ├── CITATION.cff                # how to cite
 ├── codemeta.json               # software metadata (CodeMeta-2.0)
 ├── ro-crate-metadata.json      # research object packaging (RO-Crate 1.2)
-├── environment.yml             # conda/pip dependencies (single source of truth)
+├── pixi.toml + pixi.lock       # pinned dependencies (single source of truth; lockfile is per-platform)
 ├── Dockerfile                  # container build
 ├── Snakefile                   # pipeline orchestration
 ├── myst.yml + index.md         # Jupyter Book scaffold
@@ -78,8 +79,8 @@ This template bakes in conventions that took multiple replications to discover. 
 
 - **FAIR4RS conformance** — see [`docs/fair4rs-checklist.md`](docs/fair4rs-checklist.md) for the principle-by-principle mapping.
 - **Self-contained data downloads** — the first notebook fetches everything; no manual data prep.
-- **`environment.yml` as single source of truth** — local dev, Docker, and CI all use the same pinned versions.
-- **`mamba-org/setup-micromamba@v3`-based CI** — caches the env, runs the pipeline, executes notebooks via a glob.
+- **`pixi.toml` + `pixi.lock` as single source of truth** — local dev, Docker, and CI all install the same per-platform-pinned env.
+- **`prefix-dev/setup-pixi`-based CI** — caches the env, runs the pipeline with `pixi run`, executes notebooks via a glob, fails fast on a stale lockfile.
 - **Jupyter Book deployment** — auto-deploys to GitHub Pages with `BASE_URL` set correctly. (Don't put `base_url` in `myst.yml` — MyST silently ignores it.)
 - **Docker + GHCR + Zenodo image archival** — `release` trigger pushes to GHCR and (optionally) archives to Zenodo for long-term preservation.
 - **RO-Crate packaging** — the entire repo is a navigable Research Object via `ro-crate-metadata.json` (Process Run Crate + Workflow RO-Crate profiles).
