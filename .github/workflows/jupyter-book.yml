@@ -49,7 +49,7 @@ jobs:
 
       - name: Set up pixi
         if: steps.guard.outputs.skip != 'true'
-        uses: prefix-dev/setup-pixi@v0.9
+        uses: prefix-dev/setup-pixi@v0.9.6
         with:
           pixi-version: v0.68.1
           locked: true

@@ -6,12 +6,12 @@ Hard-won rules for replication repos using `pixi` + `prefix-dev/setup-pixi` + `M
 
 ## `pixi.toml` is the single source of truth
 
-All CI workflows MUST use `prefix-dev/setup-pixi@v0.9` with the repo's `pixi.toml` + `pixi.lock`. Never duplicate dependency lists in manual `pip install` lines in workflow YAML.
+All CI workflows MUST use `prefix-dev/setup-pixi@v0.9.6` with the repo's `pixi.toml` + `pixi.lock`. Never duplicate dependency lists in manual `pip install` lines in workflow YAML.
 
 Pattern:
 
 ```yaml
-- uses: prefix-dev/setup-pixi@v0.9
+- uses: prefix-dev/setup-pixi@v0.9.6
   with:
     pixi-version: v0.68.1
     locked: true
