@@ -39,8 +39,15 @@ grep -r \
   --include='*.md' --include='*.yml' --include='*.json' --include='*.yaml' \
   --include='*.cff' --include='*.toml' \
   --include='Dockerfile' --include='LICENSE' \
-  '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' | head
+  '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' \
+  | while read f; do
+      if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -v '{{ZENODO_DOI}}' | head -1 > /dev/null; then
+        echo "$f"
+      fi
+    done | head
 ```
+
+`{{ZENODO_DOI}}` is documented to remain unsubstituted until Phase 4 mints the concept DOI (see `docs/fair4rs-checklist.md`), so the guard above ignores it.
 
 If the output contains any unsubstituted `{{...}}` token, the template has not been initialised. **Stop**, tell the user:
 
