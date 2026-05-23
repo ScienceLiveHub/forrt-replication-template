@@ -41,7 +41,7 @@ grep -r \
   --include='Dockerfile' --include='LICENSE' \
   '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' \
   | while read f; do
-      if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -v '{{ZENODO_DOI}}' | head -1 > /dev/null; then
+      if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -qv '{{ZENODO_DOI}}'; then
         echo "$f"
       fi
     done | head

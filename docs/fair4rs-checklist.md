@@ -160,7 +160,7 @@ Run this list before cutting any GitHub release:
 
 - [ ] `CITATION.cff` `version` and `date-released` updated.
 - [ ] `codemeta.json` `version` and `dateModified` updated.
-- [ ] All `{{...}}` placeholder tokens substituted, **except `{{ZENODO_DOI}}`** which is allowed to remain until the first release mints the concept DOI (see line 167). Audit with: `grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.json' --include='*.cff' --include='*.toml' | while read f; do grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -v '{{ZENODO_DOI}}' | head -1 >/dev/null && echo "$f"; done` — should return nothing.
+- [ ] All `{{...}}` placeholder tokens substituted, **except `{{ZENODO_DOI}}`** which is allowed to remain until the first release mints the concept DOI (see line 167). Audit with: `grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.json' --include='*.cff' --include='*.toml' | while read f; do grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -qv '{{ZENODO_DOI}}' && echo "$f"; done` — should return nothing.
 - [ ] `pixi.toml` lists every notebook import (`grep -h "^import\|^from" notebooks/*.py | sort -u`); `pixi.lock` is fresh (`pixi install --locked && git diff --exit-code pixi.lock`).
 - [ ] `LICENSE` carries the right author and year.
 - [ ] Release notes follow the Zenodo-description format (`docs/cicd-conventions.md` § Release notes are Zenodo descriptions).
