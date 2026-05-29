@@ -1,11 +1,11 @@
 ---
 name: verify-chain
-description: Read-only verification of a published FORRT nanopublication chain. Fetches each URI from nanopubs/PUBLISHED.md, parses the signed TriG, and checks that the citation graph is internally consistent (each step references the previous step's URI) and externally consistent (Outcome's Repository URL matches this repo; CiTO's cited DOI resolves). Returns a per-row pass/fail report. Run as the final pre-comms check after Phase 5.
+description: Read-only verification of a published FORRT nanopublication chain. Calls Science Live's /np/constellation endpoint once to fetch the structured chain, then cross-checks every URI in nanopubs/PUBLISHED.md, the Outcome's repository URL against the local git remote, and the CiTO's cited DOIs against HTTP resolvers. Returns a per-row pass/fail report. Run as the final pre-comms check after Phase 5.
 ---
 
 # /verify-chain
 
-You're verifying that the FORRT chain published from this repository is **internally consistent** (each step cross-references the previous step's URI as it should) and **externally consistent** (the URIs the chain claims about external artefacts — the GitHub repo, the cited DOI — actually resolve and match what's locally present).
+You're verifying that the FORRT chain published from this repository is **internally consistent** (the steps cross-reference each other as the chain shape requires) and **externally consistent** (the Outcome's repository URL matches this repo, and the CiTO's cited DOIs resolve).
 
 This is read-only work. **Do not** edit any nanopub, do not retract, do not supersede. The output is a verification report; any fixes are downstream actions the user takes if the report finds problems.
 
@@ -15,141 +15,202 @@ This is read-only work. **Do not** edit any nanopub, do not retract, do not supe
 - **Before announcing the chain publicly.** A LinkedIn post, blog announcement, or paper citation should follow a green `/verify-chain` run, not precede it.
 - **After any supersede or retract operation.** Re-verify because the citation graph may have shifted.
 
-## Procedure
+## Prerequisite — Science Live API key
 
-### Step 1 — Read the registry
-
-Read `nanopubs/PUBLISHED.md`. Extract the published URIs for each step:
-
-| Step | Template | URI source |
-|---|---|---|
-| 1 | Quote-with-comment, PICO, or PCC | row labelled "01" in the chain table |
-| 2 | AIDA Sentence | row labelled "02" |
-| 3 | FORRT Claim | row labelled "03" |
-| 4 | FORRT Replication Study | row labelled "04" |
-| 5 | FORRT Replication Outcome | row labelled "05" |
-| 6 | CiTO Citation | row labelled "06" |
-| 7 | Research Software (optional) | row labelled "07" |
-| 8 | Research Synthesis (optional) | row labelled "08" |
-
-If any step's row still reads `_not yet published_`, stop and tell the user: *"Step N has no URI in PUBLISHED.md — the chain isn't complete. Run `/verify-chain` again once all six steps are published."*
-
-Skip optional steps (07, 08) if they say `_not applicable / not yet published_`.
-
-### Step 2 — Fetch each nanopub's TriG
-
-For each URI, fetch its signed TriG via the HTTP resolver:
+This skill uses Science Live's `/np/constellation` endpoint. That endpoint requires a key.
 
 ```bash
-curl -s -L -H "Accept: application/trig" "<URI>"
+export SCIENCELIVE_API_KEY="sl_..."
+# Optional: override the API base if you self-host
+export SCIENCELIVE_API_BASE="${SCIENCELIVE_API_BASE:-https://api.sciencelive4all.org}"
 ```
 
-URIs in either namespace (`https://w3id.org/sciencelive/np/RA…` or `https://w3id.org/np/RA…`) resolve through this single GET. Save each response to a temporary file (in-memory string is also fine) so it can be inspected for cross-references.
+Get a key from the platform: `platform.sciencelive4all.org → Settings → API Keys`. Keys begin with `sl_`. If the user has been using the Zotero plugin to publish, they already have one — it's stored in Zotero's plugin preferences.
 
-If a fetch fails (network error, 404), record it in the report as `step N: URI unreachable` and continue with the remaining steps. Don't stop.
+If `SCIENCELIVE_API_KEY` is unset when this skill runs, stop immediately and tell the user:
 
-### Step 3 — Internal consistency check (citation graph)
+> *"This skill needs `SCIENCELIVE_API_KEY` set in the environment. Generate one at platform.sciencelive4all.org → Settings → API Keys, then `export SCIENCELIVE_API_KEY=sl_…` and re-run."*
 
-A FORRT chain is a linear citation graph: each step references the previous step's URI somewhere in its assertion (and sometimes provenance) graph. The cleanest test is to fetch step N's TriG and grep / string-search for step N−1's URI.
+## Procedure
 
-For each adjacency:
+### Step 1 — Read the local registry
+
+Read `nanopubs/PUBLISHED.md`. Extract the published URI for each step:
+
+| Step | Template | Required |
+|---|---|---|
+| 1 | Quote-with-comment, PICO, or PCC | yes |
+| 2 | AIDA Sentence | yes |
+| 3 | FORRT Claim | yes |
+| 4 | FORRT Replication Study | yes |
+| 5 | FORRT Replication Outcome | yes |
+| 6 | CiTO Citation | yes |
+| 7 | Research Software | optional |
+| 8 | Research Synthesis | optional |
+
+If any **required** row still reads `_not yet published_`, stop and tell the user: *"Step N has no URI in PUBLISHED.md — the chain isn't complete. Run `/verify-chain` once all six required steps are published."*
+
+Optional steps (07, 08) flagged as `_not applicable / not yet published_` are skipped, not failed.
+
+### Step 2 — Call the constellation API once
+
+Pick the "deepest" URI to use as the entry point — preference order: Synthesis (step 8) → CiTO (step 6) → Outcome (step 5). The endpoint walks bidirectionally, so any of these surfaces the same constellation.
+
+```bash
+entry_uri="<deepest-published-URI>"
+encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$entry_uri")
+api_base="${SCIENCELIVE_API_BASE:-https://api.sciencelive4all.org}"
+
+constellation=$(curl -sL --max-time 60 \
+  -H "x-api-key: $SCIENCELIVE_API_KEY" \
+  -H "Accept: application/json" \
+  -w "\nHTTP_STATUS:%{http_code}" \
+  "$api_base/np/constellation?uri=$encoded")
+
+status=$(printf '%s' "$constellation" | sed -n 's/^HTTP_STATUS://p' | tail -1)
+body=$(printf '%s' "$constellation" | sed '/^HTTP_STATUS:/d')
+```
+
+Handle the common failures:
+
+| Status | Meaning | What to do |
+|---|---|---|
+| 200 | constellation returned | proceed to Step 3 |
+| 401 | API key invalid | abort: tell user to refresh / re-export key |
+| 404 | URI not on Science Live | abort: the entry URI isn't published, or PUBLISHED.md points at a wrong namespace |
+| 5xx / timeout | API or upstream KP unavailable | abort: tell user to retry later, mention the live status indicator at `platform.sciencelive4all.org` |
+
+The 200 response is JSON. Top-level keys you'll use:
+
+- `entry` — the URI you sent
+- `paperDoi` — the DOI of the upstream paper this chain replicates / qualifies
+- `apexCito` — the topmost CiTO Citation URI (null if none)
+- `researchSynthesis` — `{uri, label, synthesis, conditions, limitations, recommendations}` (null if no Synthesis)
+- `chains[]` — array of `{id, outcomeUri, outcomeVerdict, outcomeConfidence, citoRelations[], steps[]}`
+- `chains[].steps[]` — array of `{step, uri, …}` where `step` is one of `"AIDA"`, `"Claim"`, `"Study"`, `"Outcome"`, `"CiTO"` and the extra fields depend on the step type
+
+### Step 3 — Internal consistency from the structured response
+
+Build a set of all URIs returned by the API (across `researchSynthesis.uri`, `apexCito`, every `chains[].steps[].uri`, every `chains[].outcomeUri`). Then for each URI in `PUBLISHED.md`:
 
 | Test | Pass criterion |
 |---|---|
-| Step 2 (AIDA) references step 1 (Quote/PICO/PCC) | Step 1's URI appears as a string in step 2's TriG |
-| Step 3 (Claim) references step 2 (AIDA) | Step 2's URI appears as a string in step 3's TriG |
-| Step 4 (Study) references step 3 (Claim) | Step 3's URI appears as a string in step 4's TriG |
-| Step 5 (Outcome) references step 4 (Study) | Step 4's URI appears as a string in step 5's TriG |
-| Step 6 (CiTO) references step 5 (Outcome) | Step 5's URI appears as a string in step 6's TriG, as the citing creative work |
+| Step 2 (AIDA) URI | present as `step: "AIDA"` in at least one chain |
+| Step 3 (Claim) URI | present as `step: "Claim"` in at least one chain |
+| Step 4 (Study) URI | present as `step: "Study"` in at least one chain |
+| Step 5 (Outcome) URI | present as `step: "Outcome"` in at least one chain |
+| Step 6 (CiTO) URI | present as `step: "CiTO"` in at least one chain |
+| Step 8 (Synthesis) URI, if published | equals `researchSynthesis.uri` |
+| Step 7 (Research Software) URI, if published | not part of the FORRT chain proper — verify reachability only via direct HEAD (see fallback below) |
 
-Implementation: `grep -F "<step-N-1-URI>" step-N.trig` returns at least one match. Record a tick (✓) or cross (✗) per row.
+If a URI in `PUBLISHED.md` is missing from the constellation, that's a chain-integrity failure: the URI exists but isn't reachable from the entry point via FORRT chain links. Record it.
 
-This grep-based check is intentionally robust to predicate variation across Science Live's template versions — it doesn't matter exactly which predicate names connect the steps, only that the upstream URI is referenced *somewhere* in the downstream nanopub's TriG.
+The constellation API does NOT enumerate Quote-with-comment / PICO / PCC URIs as a separate `step` (they sit upstream of AIDA). For step 1, verify reachability with a direct fetch:
 
-### Step 4 — External consistency check
+```bash
+quote_uri="<step-1-URI>"
+curl -sI --max-time 30 -H "Accept: application/trig" -L "$quote_uri" \
+  | grep -E '^HTTP/' | tail -1
+```
 
-These cross-reference checks span the chain to artefacts outside the nanopub network.
+Pass: `200`. Fail: anything else.
+
+### Step 4 — External consistency
 
 **Outcome's Repository URL matches this repo's GitHub remote.**
+
+The constellation's Outcome step exposes the repository inline. Find the Outcome whose URI matches step 5 in PUBLISHED.md and read its `.repository` field via `jq`:
+
+```bash
+outcome_repo=$(printf '%s' "$body" | jq -r \
+  --arg uri "$step5_uri" \
+  '.chains[].steps[] | select(.step == "Outcome" and .uri == $uri) | .repository' \
+  | head -1)
+```
+
+Compare against the local repo's GitHub URL:
 
 ```bash
 expected_repo=$(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||')
 # Example: "annefou/weatherxbiodiversity-projection"
-
-# Then check that the Outcome's TriG contains the substring:
-#   github.com/<expected_repo>
-grep -F "github.com/${expected_repo}" step-5.trig
 ```
 
-If absent: record `Outcome's Repository URL doesn't match local git remote`. Fix is to retract + supersede the Outcome with the correct URL.
+The Outcome's `repository` may be a Zenodo concept DOI rather than a github URL. Both are acceptable. Pass criterion: either substring matches:
 
-**CiTO's cited DOI resolves.**
+- `github.com/${expected_repo}` in the Outcome's `repository`, OR
+- the Zenodo DOI in `CITATION.cff` matches the Outcome's `repository`
 
-The CiTO step's TriG includes a `cito:confirms` (or similar) predicate pointing to a DOI URL. Extract that URL (use a simple regex like `https://doi\.org/10\.[0-9.]+/[^>]+` over the step-6 TriG; take the first DOI-shaped match that's NOT the citing work). Then:
+**CiTO's cited DOIs resolve.**
+
+For each chain's CiTO step, read its `.targets[]` (DOIs) from the response. For each DOI:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" -L "<cited-DOI-URL>"
+curl -s -o /dev/null -w "%{http_code}" -L "$doi_url"
 ```
 
-Pass criterion: HTTP status `200`, `302`, or `303` (DOI resolvers redirect through 30x). Fail: `404` or `5xx`.
+Pass: `200`, `302`, or `303`. Fail: `404` or `5xx`.
 
 **Outcome's source DOI matches CITATION.cff (if present).**
 
-If the repo has a `CITATION.cff` with a `doi:` field (Zenodo concept DOI), check that the Outcome's TriG references that same DOI (as a `dct:source` or similar). This catches the "released v1.0.0 but Outcome still references v0.9.0's pre-release DOI" mistake.
+If `CITATION.cff` has a `doi:` field (Zenodo concept DOI), check the Outcome's `repository` or `conclusion`/`evidence` text references it:
 
 ```bash
-cff_doi=$(grep '^doi:' CITATION.cff | head -1 | sed 's/.*"\(.*\)".*/\1/')
-# Example: "10.5281/zenodo.19756173"
-grep -F "${cff_doi}" step-5.trig
+cff_doi=$(grep -E '^\s+value:' CITATION.cff | head -1 | sed 's/.*"\(.*\)".*/\1/')
+printf '%s' "$body" | jq '.chains[].steps[] | select(.step == "Outcome")' | grep -F "$cff_doi"
 ```
 
-If absent: warn (not fail) — the Zenodo DOI in CITATION.cff might be a later release than the one referenced in the published Outcome, which is a normal version-drift case, not a chain-integrity bug.
+If absent: warn (not fail) — the CITATION.cff DOI may be a newer release than the one referenced in the published Outcome (normal version-drift).
 
 ### Step 5 — Report
 
 Output a single Markdown table the user can paste into a release-readiness checklist or a Jupyter Book section. One row per check, with pass / fail / warn status.
 
-Template:
-
 ```markdown
 ## /verify-chain report
 
+Entry point: `<deepest-published-URI>`
+Constellation summary: <N chains, M total steps fetched>
+
 | Check | Status | Notes |
 |---|---|---|
-| All 6 step URIs present in PUBLISHED.md | ✓ / ✗ | |
-| Each step's TriG is reachable | ✓ / ✗ | |
-| AIDA references Quote/PICO/PCC | ✓ / ✗ | |
-| FORRT Claim references AIDA | ✓ / ✗ | |
-| Replication Study references Claim | ✓ / ✗ | |
-| Replication Outcome references Study | ✓ / ✗ | |
-| CiTO Citation references Outcome | ✓ / ✗ | |
+| All required step URIs present in PUBLISHED.md | ✓ / ✗ | |
+| Constellation API reachable | ✓ / ✗ | HTTP <status> |
+| Step 1 (Quote/PICO/PCC) URI resolves | ✓ / ✗ | |
+| Step 2 (AIDA) URI appears in constellation | ✓ / ✗ | |
+| Step 3 (Claim) URI appears in constellation | ✓ / ✗ | |
+| Step 4 (Study) URI appears in constellation | ✓ / ✗ | |
+| Step 5 (Outcome) URI appears in constellation | ✓ / ✗ | |
+| Step 6 (CiTO) URI appears in constellation | ✓ / ✗ | |
+| Step 8 (Synthesis) URI matches apex | ✓ / ✗ / N/A | |
 | Outcome Repository URL matches git remote | ✓ / ✗ | annefou/<repo> |
-| CiTO cited DOI resolves | ✓ / ✗ | https://doi.org/... |
+| CiTO cited DOIs resolve | ✓ / ✗ | <list of DOIs> |
 | Outcome source DOI matches CITATION.cff | ✓ / ⚠ | warn = version drift |
 
-**Verdict:** GREEN (all passes) / RED (one or more fails) / YELLOW (warns only, no fails).
+**Verdict:** GREEN (all ✓) / RED (any ✗) / YELLOW (warns only).
 ```
 
 If the verdict is GREEN, conclude with:
-> *"The chain is internally consistent and externally resolves correctly. Safe to announce."*
+> *"The chain is internally consistent in the constellation graph and externally resolves correctly. Safe to announce."*
 
 If RED, conclude with the list of specific failures and a suggested next step (typically: retract + supersede via `nanopub-agent-utilities` — see `docs/programmatic-nanopubs.md`).
 
-If YELLOW, conclude with the warnings and a one-line judgement of whether they're real (e.g. CITATION.cff DOI vs Outcome DOI drift is normal during active releases; flag but don't block).
+If YELLOW, conclude with the warnings and a one-line judgement of whether they're real (CITATION.cff DOI vs Outcome DOI drift is normal during active releases; flag but don't block).
 
 ## Anti-patterns
 
 - **Don't edit any nanopub.** This skill is read-only. Verification surfaces problems; the user takes the fix action.
 - **Don't try to publish anything.** No `publish`, no `retract`, no `supersede` from this skill.
-- **Don't conflate failure with absence.** If step 7 (Research Software) is genuinely optional and the user didn't publish one, that's not a failure — it's an N/A. The report should reflect that.
-- **Don't rely on a specific predicate vocabulary.** The grep-based reference check works across template versions. Don't bet on `npx:relatedTo` or similar; the predicate names may change.
+- **Don't conflate failure with absence.** Step 7 (Research Software) genuinely optional. Step 8 (Synthesis) genuinely optional. If the user didn't publish either, that's N/A, not a failure.
+- **Don't fall back to per-URI TriG parsing as the primary path.** That's an explicit downgrade; if `SCIENCELIVE_API_KEY` is missing or the API is down, fail loudly, don't degrade silently.
+- **Don't cache the constellation response across runs.** Fresh fetch each time — the chain may have been superseded since last run.
 
 ## Tools
 
-This skill uses `Read` (for PUBLISHED.md, CITATION.cff, and local files) and `Bash` (for `curl`, `grep`, `git remote`). No `Edit`, `Write`, or any state-changing tool.
+This skill uses `Read` (for PUBLISHED.md, CITATION.cff, and local files) and `Bash` (for `curl`, `jq`, `git remote`). No `Edit`, `Write`, or any state-changing tool.
 
 ## Cross-references
 
 - The chain shapes and which step references which: `docs/chain-decision-tree.md` and `nanopubs/README.md` § Order matters
 - For retract / supersede (the typical fix when this skill returns RED): `docs/programmatic-nanopubs.md`
 - The published-URI registry: `nanopubs/PUBLISHED.md`
+- The constellation endpoint contract: `science-live-platform/docs/plans/nanopub-query-api.md` § `/api/np/{uri}/constellation`

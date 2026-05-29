@@ -129,22 +129,31 @@ If the user left `{{PRIOR_CHAIN_URI}}` blank, skip this step entirely (you shoul
 
 Otherwise:
 
-### Step 9a — Run the importer script
+### Step 9a — Confirm the API key is set
+
+The import path relies on Science Live's `/np/constellation` endpoint, which requires authentication.
 
 ```bash
-python3 scripts/import-nanopub-chain.py "<PRIOR_CHAIN_URI>"
+test -n "$SCIENCELIVE_API_KEY" || {
+  echo "Set SCIENCELIVE_API_KEY before continuing. Get a key at"
+  echo "platform.sciencelive4all.org → Settings → API Keys."
+  exit 1
+}
 ```
 
-This single command does both layers in one pass:
+If unset, pause `/init-template` and tell the user to set it (`export SCIENCELIVE_API_KEY=sl_…` in their shell) before re-running. Don't try to import the prior chain without it — the resulting `nanopubs/imported/` will be empty and the user will think the URI was wrong.
 
-- **Claim layer**: SPARQL-walks the citation graph from the entry URI, fetches every reachable nanopub, caches each TriG to `nanopubs/imported/trig/<RA-id>.trig`, writes `nanopubs/imported/constellation.json` + `cited_papers.txt`.
-- **Infrastructure layer**: resolves each Outcome / Research Software nanopub's `hasOutcomeRepository` URI (GitHub URLs handled directly, Zenodo DOIs resolved via the Zenodo REST API's `related_identifiers`), `git clone`s each sibling repo into `../`, copies starter files (`pixi.toml`, `pixi.lock`, `Snakefile`, `notebooks/01_data_download.py`, `02_data_clean.py`, `Dockerfile`) from the canonical sibling into `_template_from_prior/` with provenance headers, and writes `nanopubs/imported/SETUP_INHERITED.md`.
+### Step 9b — Chain into `/import-from-nanopub`
 
-Network access is required. The script depends on `rdflib` (already in the pixi env spec).
+Invoke the `/import-from-nanopub` skill with the value the user set for `{{PRIOR_CHAIN_URI}}`:
 
-### Step 9b — Generate the claim-layer summary
+```
+/import-from-nanopub <PRIOR_CHAIN_URI>
+```
 
-Read the resulting `nanopubs/imported/constellation.json` and the cached TriG files in `nanopubs/imported/trig/`, then write `nanopubs/imported/CHAIN_SUMMARY.md` following the structure documented in `.claude/skills/import-from-nanopub/SKILL.md` Step 5. The summary should name the upstream paper, list each chain's Outcome verdict + CiTO relation, surface the methodological precedents to inherit, and end with 3–5 open questions for the user to answer before drafting any nanopubs in Phase 1.
+That skill calls `/np/constellation` once, caches the structured response to `nanopubs/imported/constellation.json`, writes `nanopubs/imported/CHAIN_SUMMARY.md` from the inline prose fields, and (if any Outcome `repository` URLs resolve) clones sibling repos into `../` and stages starter files into `_template_from_prior/` with provenance headers. See `.claude/skills/import-from-nanopub/SKILL.md` for the full procedure.
+
+The constellation JSON contains all the substantive content inline — there's no separate per-URI TriG fetching step. Only the optional archival TriG fetch (also documented in `import-from-nanopub`) needs network bandwidth beyond the single API call.
 
 ### Step 9c — Don't commit the imports
 

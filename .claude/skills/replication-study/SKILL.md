@@ -7,6 +7,18 @@ description: End-to-end orchestration skill for a FORRT replication study — gu
 
 You're orchestrating a complete FORRT replication study from the freshly-initialised template through publication. This skill walks the user through the six phases in `CLAUDE.md`, dispatching to specialist agents at each stage.
 
+## Preflight — Science Live API key
+
+Two of the skills this orchestrator dispatches to (`/import-from-nanopub`, `/verify-chain`) call Science Live's `/np/constellation` endpoint, which requires authentication. Before you start any phase that needs them — Phase 0 (if `{{PRIOR_CHAIN_URI}}` is set) and Phase 5 (final verification) — confirm the key is exported:
+
+```bash
+test -n "$SCIENCELIVE_API_KEY" || echo "SCIENCELIVE_API_KEY not set — needed for /import-from-nanopub and /verify-chain"
+```
+
+If unset, tell the user to set it before continuing:
+
+> *"Two later phases will need a Science Live API key. Get one at platform.sciencelive4all.org → Settings → API Keys (it starts with `sl_`), then `export SCIENCELIVE_API_KEY=sl_…` in your shell. You don't need it for Phases 1-4, but Phase 5's `/verify-chain` will block without it."*
+
 ## Procedure
 
 ### Step 1 — Detect current phase

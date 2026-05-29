@@ -1,11 +1,11 @@
 ---
 name: import-from-nanopub
-description: Seed Phase 1 of a fresh replication from a published nanopub URI instead of (or alongside) a paper PDF. Fetches every reachable nanopub in the chain — CiTO Citation, Research Synthesis, all chain steps, all sibling chains — and produces `nanopubs/imported/CHAIN_SUMMARY.md` summarising what's already been tested by whom, with what scope/method, and with what Outcome. Use when the new replication extends, qualifies, or builds on existing FORRT chains on the network.
+description: Seed Phase 1 of a fresh replication from a published nanopub URI instead of (or alongside) a paper PDF. Calls Science Live's /np/constellation endpoint to fetch every reachable nanopub in the chain — CiTO Citation, Research Synthesis, all chain steps, all sibling chains — and produces `nanopubs/imported/CHAIN_SUMMARY.md` summarising what's already been tested by whom, with what scope/method, and with what Outcome. Use when the new replication extends, qualifies, or builds on existing FORRT chains on the network.
 ---
 
 # /import-from-nanopub
 
-You're seeding Phase 1 of this replication from a **published nanopub URI** instead of (or in addition to) a paper PDF. The typical entry point is a CiTO Citation or a Research Synthesis nanopub at the apex of an existing chain; from that one URI the whole constellation is reachable by traversing CiTO citations and provenance links.
+You're seeding Phase 1 of this replication from a **published nanopub URI** instead of (or in addition to) a paper PDF. The typical entry point is a CiTO Citation or a Research Synthesis nanopub at the apex of an existing chain; from that one URI the whole constellation is reachable via Science Live's `/np/constellation` endpoint.
 
 This skill produces a structured summary that the `paper-analyst` agent (and the human running the replication) can read as if it were `00_paper_summary.md`, except it summarises **prior signed claims about the upstream paper**, not the paper itself.
 
@@ -21,189 +21,202 @@ This skill produces a structured summary that the `paper-analyst` agent (and the
 - Your replication has no relationship to existing FORRT chains on the network — use the paper-rooted Phase 1 (`paper-analyst` agent on a PDF) instead.
 - The entry URI is from outside the Science Live / nanopub network (a Wikidata item, a Zenodo DOI). The skill is nanopub-network-specific.
 
+## Prerequisite — Science Live API key
+
+This skill calls `/np/constellation`, which requires authentication.
+
+```bash
+export SCIENCELIVE_API_KEY="sl_..."
+# Optional: override the API base if you self-host
+export SCIENCELIVE_API_BASE="${SCIENCELIVE_API_BASE:-https://api.sciencelive4all.org}"
+```
+
+Get a key from the platform at `platform.sciencelive4all.org → Settings → API Keys`. Keys begin with `sl_`. If the user has the Zotero plugin set up to publish nanopubs, they already have one stored in Zotero preferences.
+
+If `SCIENCELIVE_API_KEY` is unset, stop and tell the user: *"This skill needs `SCIENCELIVE_API_KEY` exported in the environment. Generate one at platform.sciencelive4all.org → Settings → API Keys, then re-run."*
+
 ## Procedure
 
 ### Step 1 — Get the entry URI
 
 Ask the user for the entry URI. Acceptable forms:
 
-- `https://w3id.org/sciencelive/np/RA...` (Science Live)
-- `https://w3id.org/np/RA...` (Nanodash / nanopub network)
+- `https://w3id.org/sciencelive/np/RA...` (Science Live native)
+- `https://w3id.org/np/RA...` (nanopub network)
 
-Reject URIs that don't match this pattern with a helpful message — this skill is nanopub-network-specific.
+Reject URIs that don't match this pattern — this skill is nanopub-network-specific.
 
-### Step 2 — Verify the URI actually resolves
-
-Before running the full crawl, sanity-check the entry URI exists. Open it in the Science Live viewer:
-
-```
-https://w3id.org/sciencelive/np/RA...  → opens the viewer with Template View / RDF View tabs
-```
-
-…or fetch its TriG:
+### Step 2 — Call the constellation API
 
 ```bash
-curl -s -L -H "Accept: application/trig" "<URI>" | head -50
+entry_uri="<the user's URI>"
+encoded=$(python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$entry_uri")
+api_base="${SCIENCELIVE_API_BASE:-https://api.sciencelive4all.org}"
+
+response=$(curl -sL --max-time 90 \
+  -H "x-api-key: $SCIENCELIVE_API_KEY" \
+  -H "Accept: application/json" \
+  -w "\nHTTP_STATUS:%{http_code}" \
+  "$api_base/np/constellation?uri=$encoded")
+
+status=$(printf '%s' "$response" | sed -n 's/^HTTP_STATUS://p' | tail -1)
+body=$(printf '%s' "$response" | sed '/^HTTP_STATUS:/d')
 ```
 
-If the response is empty or 404, stop. Tell the user: *"That URI does not resolve. Common reasons: (1) typo in the URI, (2) the nanopub was retracted, (3) network issue. Verify in the Science Live viewer first."* See `feedback_nanopub_uri_verification.md` in the user's auto-memory — `PUBLISHED.md` files are not always exhaustive, but the viewer is authoritative.
+Handle the failure modes:
 
-### Step 3 — Run the importer script
+| Status | Meaning | Action |
+|---|---|---|
+| 200 | constellation returned | proceed |
+| 401 | API key invalid | abort, ask user to refresh / re-export key |
+| 404 | entry URI not on Science Live | abort, ask user to verify the URI by opening `https://w3id.org/sciencelive/np/<RA-id>` in a browser first |
+| 5xx / timeout | API or upstream KP unavailable | abort, suggest retry later |
+
+The 200 JSON response is the constellation. Top-level keys:
+
+- `entry` — the URI you sent
+- `paperDoi` — the DOI of the upstream paper this chain replicates / qualifies (may be null)
+- `apexCito` — the topmost CiTO Citation URI (null if none)
+- `researchSynthesis` — `{uri, label, synthesis, conditions, limitations, recommendations}` or null
+- `chains[]` — array of `{id, outcomeUri, outcomeVerdict, outcomeConfidence, citoRelations[], steps[]}`
+- `chains[].steps[]` — array of `{step, uri, …}` where `step` is `"AIDA"`, `"Claim"`, `"Study"`, `"Outcome"`, or `"CiTO"` and each step type carries its substantive prose fields inline (Study has `scope`, `method`, `deviations`; Outcome has `label`, `verdict`, `confidence`, `conclusion`, `evidence`, `limitations`, `repository`; CiTO has `relations[]`, `targets[]`)
+
+### Step 3 — Cache the response
+
+Write the raw response to `nanopubs/imported/constellation.json` (this directory is gitignored by the template). This is the single source of truth for the rest of the skill.
 
 ```bash
-python3 scripts/import-nanopub-chain.py <ENTRY-URI>
+mkdir -p nanopubs/imported
+printf '%s' "$body" | python3 -m json.tool > nanopubs/imported/constellation.json
 ```
 
-What this does, in two layers:
+Optionally also fetch each step URI's TriG for archival (useful if the user wants to inspect the raw signed payload):
 
-**Claim-layer import** (the "what was published" axis):
+```bash
+mkdir -p nanopubs/imported/trig
+for uri in $(printf '%s' "$body" | jq -r '.chains[].steps[].uri'); do
+  ra_id=$(printf '%s' "$uri" | sed 's|.*/||')
+  curl -sL -H "Accept: application/trig" -o "nanopubs/imported/trig/${ra_id}.trig" "$uri"
+done
+```
 
-- BFS-walks the citation + provenance graph via SPARQL queries (`scripts/queries/`) against `https://query.knowledgepixels.com/repo/full` and fetches every reachable nanopub (default depth 5, default cap 80 nodes).
-- Caches each fetched TriG to `nanopubs/imported/trig/<RA-id>.trig`.
-- Writes `nanopubs/imported/constellation.json` — structured graph: nodes (URI → step type → key fields) + edges (CiTO + provenance relations).
-- Writes `nanopubs/imported/cited_papers.txt` — external (non-nanopub) URIs, typically the upstream paper DOI(s).
+(TriG fetching is optional — the constellation JSON already includes the substantive prose. Only do this if the user explicitly asks, or if a downstream step needs the raw RDF.)
 
-**Infrastructure-layer inheritance** (the "what was built" axis):
+### Step 4 — Generate `CHAIN_SUMMARY.md`
 
-- Scans each Outcome / Research Software nanopub for a `hasOutcomeRepository` URI (which may be either a GitHub URL or a Zenodo DOI — both are handled; Zenodo DOIs are resolved to GitHub URLs via Zenodo's `related_identifiers` API).
-- **`git clone`s each sibling repository** into `--siblings-dir` (default `../`, matching the convention of keeping related replication repos as filesystem siblings).
-- Copies a curated set of starter files from the first cloned sibling into `_template_from_prior/` (`--staging-dir`): `pixi.toml`, `pixi.lock`, `Snakefile`, `notebooks/01_data_download.py`, `notebooks/02_data_clean.py`, `Dockerfile`. Each file gets a provenance header.
-- Writes `nanopubs/imported/SETUP_INHERITED.md` documenting which sibling URLs were resolved, where they were cloned, which files were staged, and what to do with them.
+Use the constellation JSON to write `nanopubs/imported/CHAIN_SUMMARY.md`. The constellation API gives you all the prose inline — no per-URI TriG parsing needed.
 
-To disable the infrastructure layer (claim-only import), pass `--no-inherit`. To skip cloning but still attempt inheritance from already-present sibling clones, pass `--no-clone-siblings`.
-
-Network access is required. The script is dependency-light: stdlib + `rdflib` + `git`. If `rdflib` is missing, the script prints a clear error; install with `pip install rdflib` in the same env you run the other replication scripts in.
-
-If the user has no network (e.g. air-gapped HPC), they should run this step on a different machine and copy the `nanopubs/imported/` directory across (note: `_template_from_prior/` and sibling clones live outside `nanopubs/imported/` and need separate transfer).
-
-### Step 4 — Read constellation.json and the cached TriG
-
-Open `nanopubs/imported/constellation.json` and inspect:
-
-- `entry` — the URI the user gave you
-- `node_count` / `edge_count` — sanity check (typical FORRT chain: 6–8 nodes single-chain; 18–25 multi-chain constellation)
-- `nodes[]` — each fetched nanopub with `step_type`, `cito_relations`, `prov_derived_from`, `plain_text_excerpts` (heuristically-extracted human-readable strings)
-- `edges[]` — CiTO and provenance relations between nodes
-- `external_citations` — upstream paper DOIs
-
-For each interesting node, also read the cached TriG at `node.raw_trig_path`. The script's heuristic `step_type` classification is good but not infallible; the cached TriG is the ground truth. Look at the Assertion graph for the substantive content (verbatim Quote text, AIDA sentence, Claim type + statement, Outcome verdict, etc.).
-
-### Step 5 — Generate `CHAIN_SUMMARY.md`
-
-Write `nanopubs/imported/CHAIN_SUMMARY.md`. Structure it as the *prior-work analogue* of `nanopubs/drafts/00_paper_summary.md`:
+Template:
 
 ```markdown
 # Prior FORRT chain summary
 
 **Entry URI**: <entry_uri>
 **Imported on**: <ISO date>
-**Constellation size**: <N> unique nanopubs across <K> chain(s)
+**Constellation size**: <jq '.chains | length'> chain(s), <jq '[.chains[].steps[]] | length'> steps total
 
 ## Upstream paper
 
-<DOI(s) and resolved title — extract title from TriG dct:title if present;
-otherwise leave for the user to fill in. Cite the paper DOI verbatim.>
+DOI: <.paperDoi>
+<resolve to title via doi.org if useful; otherwise leave for the user to fill in>
 
 ## Chain(s) already published
 
-For each chain found in the constellation:
+For each entry in `.chains[]`, emit a section:
 
-### Chain <ID> — <short label, derived from authors/Study text>
+### Chain <.chains[N].id> — <derive a short label from .chains[N].steps[step=="Outcome"].label>
 
-| Step | Template | URI | Key content |
-|---|---|---|---|
-| 01 | Quote-with-comment | RA... | "<verbatim Quote text>" |
-| 02 | AIDA | RA... | "<AIDA sentence>" |
-| 03 | FORRT Claim | RA... | type=<claim type>, statement="..." |
-| 04 | FORRT Replication Study | RA... | scope="...", method="..." |
-| 05 | FORRT Replication Outcome | RA... | verdict=<Validated/PartiallySupported/Contradicted>, "..." |
-| 06 | CiTO Citation | RA... | cito:<relation> → <upstream paper DOI> |
-| 07 | Research Software | RA... | <if present> |
+Verdict: <.chains[N].outcomeVerdict> (<.chains[N].outcomeConfidence>)
+CiTO relations to upstream paper: <.chains[N].citoRelations | join(", ")>
 
-Authors (ORCIDs): <list>
+| Step | URI | Key content |
+|---|---|---|
+| AIDA | <step.uri> | "<step.text>" |
+| Claim | <step.uri> | type=<step.type>, label="<step.label>" |
+| Study | <step.uri> | scope: "<first 200 chars of step.scope>"; method: "<first 200 chars of step.method>" |
+| Outcome | <step.uri> | "<step.label>"; conclusion: "<first 300 chars of step.conclusion>" |
+| CiTO | <step.uri> | relations=<step.relations | join(",")> → targets=<step.targets | join(", ")> |
 
-### Apex Research Synthesis (if present)
+Repository (Outcome): <step.repository>
 
-URI: RA...
-Aggregates: <chain-IDs>
-Synthesis verdict: "..."
+### Apex Research Synthesis (if .researchSynthesis is not null)
 
-### Synthesis-level CiTO (if present)
+URI: <.researchSynthesis.uri>
+Label: "<.researchSynthesis.label>"
 
-URI: RA...
-Relation: cito:<relation> → upstream paper DOI
-Statement: "..."
+Synthesis (full text):
+"<.researchSynthesis.synthesis>"
+
+Conditions: <.researchSynthesis.conditions>
+Limitations: <.researchSynthesis.limitations>
+Recommendations: <.researchSynthesis.recommendations>
+
+### Apex CiTO (if .apexCito is not null)
+
+URI: <.apexCito>
+(see `chains[*].steps[]` for its `relations[]` and `targets[]`)
 
 ## What this new replication can do
 
-Given prior chains, the new replication's natural positioning:
+Given the prior chains above, the new replication's natural positioning:
 
-- If a prior chain `confirms` and the new replication tests a different
-  taxon / region / horizon → new chain's CiTO will `extends` prior chain
-  via CiTO `cito:extends` to one of prior CiTO URIs.
-- If a prior chain `qualifies` and the new replication might either
-  reinforce or contradict the qualifying finding → new CiTO is either
-  `cito:confirms` (qualifies the qualification — note this in the CiTO
-  "personal comment" field) or `cito:disputes`.
-- If no prior chain exists for the dimension the new replication tests →
-  fresh sibling chain, CiTO relation as appropriate to the new Outcome
-  verdict (`confirms` / `qualifies` / `disputes` / `extends` upstream paper).
+- If a prior chain `confirms` the upstream paper and your replication tests a different taxon / region / horizon → new chain's CiTO will `extends` one of the prior CiTO URIs.
+- If a prior chain `qualifies` and your replication may reinforce or contradict the qualification → new CiTO is either `cito:confirms` (qualifies the qualification — note in the CiTO comment field) or `cito:disputes`.
+- If no prior chain exists for the dimension you test → fresh sibling chain rooted on the upstream paper, CiTO relation chosen from the new Outcome verdict (`confirms` / `qualifies` / `disputes` / `extends`).
 
 ## Methodological precedents to inherit
 
-- Scope and method definitions in prior Replication Study nanopubs — read
-  these before drafting `nanopubs/drafts/04_study.md` to ensure
-  comparability where intended.
-- Limitation declarations in prior Replication Outcome nanopubs — these
-  flag deviations the prior authors had to make; your replication may
-  hit the same constraints.
+- Scope and method from prior Study nanopubs (already in `chains[].steps[step="Study"]`) — read before drafting `nanopubs/drafts/04_study.md` to ensure comparability where intended.
+- Limitations declared by prior Outcome nanopubs — these flag constraints prior authors hit; your replication may hit the same.
 
 ## Open questions for the user
 
-<List 3-5 specific questions about how the new replication should position
-relative to the prior constellation. These typically include:>
-
-- Will the new replication `extends` the canonical chain's CiTO, or open
-  a fresh chain rooted on the upstream paper?
-- Are there prior Research Software nanopubs whose toolchain we should
-  reuse (mark as cited via CiTO `cito:usesMethodIn`)?
-- Does the prior Synthesis already cover the case we're testing? If so,
-  do we add a new chain or extend the existing Synthesis?
+- Will the new replication `extends` the canonical chain's CiTO, or open a fresh chain rooted on the upstream paper?
+- Are there prior Research Software nanopubs whose toolchain to reuse (cite via `cito:usesMethodIn`)?
+- Does the prior Synthesis already cover the case you're testing? If so, do you add a new chain or extend the existing Synthesis?
 ```
 
-Keep the summary **factual and short**. Do not editorialise. The user (and
-the `paper-analyst` agent that runs next) will read this to position the new
-replication.
+Keep the summary **factual and short** — copy prose from the constellation response verbatim where possible. Do not editorialise. The user (and the `paper-analyst` agent that runs next) will read this to position the new replication.
 
-### Step 6 — Hand off to Phase 1 + persist only the URI
+### Step 5 — Infrastructure-layer inheritance (sibling repos)
 
-After `CHAIN_SUMMARY.md` is written, tell the user:
+The constellation response gives you `chains[].steps[].repository` for each Outcome. These are typically Zenodo concept DOIs or GitHub URLs of the sibling replication repos. For each unique repository URL:
 
-> *"Imported `<N>` nanopubs from the constellation rooted at `<entry-URI>`. Summary at `nanopubs/imported/CHAIN_SUMMARY.md` (local cache — **gitignored, do NOT commit**).*
+```bash
+for repo in $(printf '%s' "$body" | jq -r '.chains[].steps[] | select(.step=="Outcome") | .repository' | sort -u); do
+  echo "Sibling: $repo"
+  # If $repo is a Zenodo DOI, resolve to its GitHub URL via the Zenodo API:
+  #   curl -s "https://zenodo.org/api/records/<id>" | jq -r '.metadata.related_identifiers[] | select(.relation=="isSupplementTo" or .scheme=="url") | .identifier'
+  # Otherwise it's already a GitHub URL.
+  # git clone into ../ (filesystem-sibling convention)
+done
+```
+
+Write `nanopubs/imported/SETUP_INHERITED.md` listing each resolved URL, where it was cloned, and which starter files were copied to `_template_from_prior/`. The legacy `scripts/import-nanopub-chain.py` still implements the cloning + staging logic if you'd rather call it (`python3 scripts/import-nanopub-chain.py --infrastructure-only --constellation-json nanopubs/imported/constellation.json`); both paths produce the same `SETUP_INHERITED.md` output.
+
+### Step 6 — Hand off
+
+Tell the user:
+
+> *"Imported the constellation rooted at `<entry_uri>` — <N> chain(s), <M> steps. Summary at `nanopubs/imported/CHAIN_SUMMARY.md` (local cache — **gitignored, do NOT commit**).*
 >
-> *The persistent pointer to this prior chain is the entry URI itself, which should be added to `CITATION.cff` `references:` as a `type: generic` entry with `url:` set to the URI. That way anyone cloning the repo can regenerate the local cache by re-running `/import-from-nanopub <URI>` — the nanopub network is the single source of truth, not a committed snapshot.*
+> *The persistent pointer to this prior chain is the entry URI itself, which should be added to `CITATION.cff` `references:` as a `type: generic` entry with `url:` set to the URI. The nanopub network is the single source of truth, not a committed snapshot — anyone cloning the repo can regenerate the local cache by re-running `/import-from-nanopub <URI>`.*
 >
 > *Open questions are listed at the bottom of `CHAIN_SUMMARY.md` — answer those before drafting any nanopubs. Then either: (a) place the upstream paper PDF at `paper/<name>.pdf` and run the `paper-analyst` agent in Phase 1 with `CHAIN_SUMMARY.md` as the prior-work context, or (b) skip directly to Phase 2 if the new replication is a pure method-extension of a prior chain and doesn't need fresh paper analysis."*
 
-**The cache is gitignored on purpose.** Nanopubs are immutable on the network and identified by their URI. Mirroring them into each replication repo creates inconsistency risk (the local snapshot can diverge from the live network) and bloats repos with derived data. The persistent contract is the URI in `CITATION.cff`; the cache is ephemeral.
+If `SETUP_INHERITED.md` reports files were staged to `_template_from_prior/`:
 
-### Step 7 — Hand off the infrastructure-inheritance staging area
+> *"The infrastructure-layer inheritance has staged `<N>` starter files at `_template_from_prior/`, copied from the canonical sibling chain. **Review each staged file, merge with your own at the corresponding path, then delete `_template_from_prior/`.** This is a one-shot reference area, NOT durable repo state. Do not commit it."*
 
-If `SETUP_INHERITED.md` reports that files were copied to `_template_from_prior/`, also tell the user:
-
-> *"The infrastructure-layer inheritance has staged `<N>` starter files at `_template_from_prior/`, copied from the canonical sibling chain. These include `pixi.toml`, `pixi.lock`, `Snakefile`, and `notebooks/01_data_download.py` — read the SETUP_INHERITED.md table for the full list and provenance. **Review each staged file, merge with your own at the corresponding path, then delete `_template_from_prior/`.** This staging directory is a one-shot reference area, NOT durable repo state. Do not commit it."*
->
-> *If you opted out of cloning (`--no-clone-siblings`) or no `hasOutcomeRepository` URIs were found in the imported nanopubs, the staging area is empty and only the resolved URLs appear in `SETUP_INHERITED.md` for your reference.*
+**The cache is gitignored on purpose.** Nanopubs are immutable on the network and identified by their URI. Mirroring them into each replication repo creates inconsistency risk (the local snapshot can diverge from the live network) and bloats repos with derived data.
 
 ## Failure modes
 
-- **Empty constellation (0 nodes fetched)** — entry URI didn't resolve, or the BFS hit a non-Science-Live URI immediately. Re-verify the entry URI via Step 2.
-- **Crawl hits the node cap (≥ max-nodes)** — the constellation is larger than expected; either bump `--max-nodes 200` or narrow the entry URI to a more specific point in the chain.
-- **All `step_type = "Unknown"`** — the template-URI heuristics in the script didn't match. Read the TriG manually and infer step types; if a new template family is being used, extend `STEP_TYPE_HINTS` in `scripts/import-nanopub-chain.py`.
-- **Verbatim text excerpts are short / cryptic** — the heuristic `extract_plain_text` returns the longest literals first, but for some nanopubs the substantive content is in `rdfs:label` of nested entities. Open the cached TriG and read manually.
-- **Cycle in the citation graph** — the BFS uses a `visited` set so cycles are not a hazard, but `prov:wasDerivedFrom` chains can be long; if the BFS feels slow, lower `--depth`.
-- **`Could not resolve <Zenodo DOI> to a GitHub URL`** — the Zenodo record's `related_identifiers` don't include a GitHub link. Common in older deposits; the user can manually add the GitHub URL to the prior chain's CITATION.cff via a separate commit, or just visit the Zenodo page and clone the linked repo manually.
-- **`git clone failed`** — repo is private, network down, or rate-limited. Fall back to `--no-clone-siblings` and tell the user to clone manually.
+- **Empty `chains[]`** — the entry URI resolved but the constellation walker found no chain steps reachable from it. Common cause: the entry URI is a leaf nanopub with no incoming CiTO links yet. Verify the URI is a CiTO Citation or a Research Synthesis (those are the canonical apex points), not e.g. an isolated AIDA.
+- **`paperDoi` is null** — the constellation didn't surface an upstream DOI. Check the `chains[].steps[step="CiTO"].targets[]` manually; the paper DOI is usually in there.
+- **All `step` values look correct but prose fields are empty** — the published nanopubs may use a non-standard template version. The constellation API extracts fields from known templates; if a chain uses a custom template, fall back to fetching the TriG manually via Step 3's optional block.
+- **`Could not resolve <Zenodo DOI> to a GitHub URL`** — the Zenodo record's `related_identifiers` don't include a GitHub link. Common in older deposits; ask the user to manually add the GitHub URL, or visit the Zenodo page and clone the linked repo manually.
+- **`git clone failed`** — repo is private, network down, or rate-limited. Continue without cloning; tell the user to clone manually and re-run with `--infrastructure-only`.
 - **Inherited file conflicts** — `_template_from_prior/` files start fresh each import. If you re-run with different siblings, prior staging is overwritten. Don't store work-in-progress edits in `_template_from_prior/`.
 
 ## Companion docs
