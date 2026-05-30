@@ -67,9 +67,11 @@ constellation=$(curl -sL --max-time 60 \
   -w "\nHTTP_STATUS:%{http_code}" \
   "$api_base/np/constellation?uri=$encoded")
 
-status=$(printf '%s' "$constellation" | sed -n 's/^HTTP_STATUS://p' | tail -1)
+http_status=$(printf '%s' "$constellation" | sed -n 's/^HTTP_STATUS://p' | tail -1)
 body=$(printf '%s' "$constellation" | sed '/^HTTP_STATUS:/d')
 ```
+
+> **Why `http_status`, not `status`**: `status` is a read-only variable in zsh. Assigning to it aborts the shell with `read-only variable: status`. Use any other name.
 
 Handle the common failures:
 
@@ -99,9 +101,11 @@ Build a set of all URIs returned by the API (across `researchSynthesis.uri`, `ap
 | Step 3 (Claim) URI | present as `step: "Claim"` in at least one chain |
 | Step 4 (Study) URI | present as `step: "Study"` in at least one chain |
 | Step 5 (Outcome) URI | present as `step: "Outcome"` in at least one chain |
-| Step 6 (CiTO) URI | present as `step: "CiTO"` in at least one chain |
+| Step 6 (CiTO) URI | present as `step: "CiTO"` in at least one chain, OR equal to `apexCito.uri` (see note below) |
 | Step 8 (Synthesis) URI, if published | equals `researchSynthesis.uri` |
 | Step 7 (Research Software) URI, if published | not part of the FORRT chain proper — verify reachability only via direct HEAD (see fallback below) |
+
+**Note on the apex CiTO.** When this repo's CiTO sits at the apex of the whole constellation (e.g. it's the deepest URI a downstream Research Synthesis cites), the API hoists it to top-level `apexCito.uri` and **removes it from `chains[].steps[]`** — the chain that owns it will show step types like `[AIDA, Claim, Study, Outcome, ResearchSoftware]` with no `CiTO` entry. The skill must accept either form: a per-chain `step:"CiTO"` match OR `apexCito.uri == published_cito_uri`. Verified live 2026-05-30 on the Bombus projection chain (its CiTO was apexCito-only).
 
 If a URI in `PUBLISHED.md` is missing from the constellation, that's a chain-integrity failure: the URI exists but isn't reachable from the entry point via FORRT chain links. Record it.
 
@@ -142,13 +146,20 @@ The Outcome's `repository` may be a Zenodo concept DOI rather than a github URL.
 
 **CiTO's cited DOIs resolve.**
 
-For each chain's CiTO step, read its `.targets[]` (DOIs) from the response. For each DOI:
+For each chain's CiTO step, read its `.targets[]` (DOIs) from the response. If this repo's CiTO is the apex (no chain step), use `.apexCito.citedTargets[]` instead.
+
+Publisher landing pages (Wiley, Springer, Science, Elsevier) routinely return `403`/`406` to `curl` or HEAD requests via anti-bot middleware, even with a browser User-Agent. A `404` could mean "not registered"; a `403` from `science.org` does **not**. Verify DOI registration via the doi.org Content Negotiation endpoint, which is the canonical machine-readable resolution path and is not behind a publisher paywall or bot wall:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" -L "$doi_url"
+curl -sL --max-time 20 \
+  -H "Accept: application/vnd.citationstyles.csl+json" \
+  "$doi_url" \
+  | jq -e '.DOI' >/dev/null 2>&1
 ```
 
-Pass: `200`, `302`, or `303`. Fail: `404` or `5xx`.
+Pass: `jq` exit `0` (response is JSON with a `.DOI` field). Fail: exit non-zero (DOI not registered, or the registrar returned an error).
+
+If you want extra diagnostics on failure, the CSL JSON also contains `.title`, `.container-title`, and `.issued.date-parts[0][0]` (year) — useful for printing what the DOI actually resolved to in the report.
 
 **Outcome's source DOI matches CITATION.cff (if present).**
 
