@@ -139,10 +139,26 @@ expected_repo=$(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||
 # Example: "annefou/weatherxbiodiversity-projection"
 ```
 
-The Outcome's `repository` may be a Zenodo concept DOI rather than a github URL. Both are acceptable. Pass criterion: either substring matches:
+The Outcome's `repository` may be a Zenodo concept DOI, a Zenodo version DOI, or a github URL. All three are acceptable. Pass criterion (first match wins):
 
-- `github.com/${expected_repo}` in the Outcome's `repository`, OR
-- the Zenodo DOI in `CITATION.cff` matches the Outcome's `repository`
+1. **GitHub URL match.** `github.com/${expected_repo}` appears as a substring of the Outcome's `repository`.
+
+2. **Same-record Zenodo redirect.** Both the Outcome's `repository` (if a Zenodo DOI) and the `CITATION.cff` `doi:` value resolve to the same `zenodo.org/records/<N>` URL. This is the common version-drift case: each GitHub release mints a new version DOI on the same concept; the Outcome may have been published against an earlier version DOI than the one now in `CITATION.cff`, but both redirects converge on the same record. Detect via the final URL after redirects:
+
+   ```bash
+   resolve_zenodo_record() {
+     # Returns "zenodo.org/records/<N>" or empty string
+     curl -sI -L --max-time 20 -o /dev/null -w '%{url_effective}' "$1" \
+       | sed -nE 's|.*(zenodo\.org/records?/[0-9]+).*|\1|p'
+   }
+   outcome_record=$(resolve_zenodo_record "$outcome_repo")
+   cff_record=$(resolve_zenodo_record "https://doi.org/$cff_doi")
+   [ -n "$outcome_record" ] && [ "$outcome_record" = "$cff_record" ] && echo "PASS"
+   ```
+
+3. **Exact-string DOI match.** The Zenodo DOI in `CITATION.cff` appears verbatim in the Outcome's `repository`. (This is the trivial case where the same DOI is used in both places — rare in practice once multiple releases exist.)
+
+If none of the three pass, that's a RED failure: the Outcome points at a repository the local repo no longer claims as its own.
 
 **CiTO's cited DOIs resolve.**
 
