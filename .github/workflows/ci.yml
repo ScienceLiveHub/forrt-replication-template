@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
 
 # Smoke test: runs the replication pipeline end-to-end via the Snakefile.
-# Large inputs should be cached via actions/cache@v4 — see data/README.md.
+# Large inputs should be cached via actions/cache@v5 — see data/README.md.
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Skip CI if template has not been initialised or notebooks are scaffolds
         id: guard
@@ -67,7 +67,7 @@ jobs:
       #
       # - name: Cache input data
       #   id: cache_data
-      #   uses: actions/cache@v4
+      #   uses: actions/cache@v5
       #   with:
       #     path: data/raw
       #     key: input-data-v1
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload results
         if: always() && steps.guard.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ci-outputs
           path: |
