@@ -109,15 +109,20 @@ Build a set of all URIs returned by the API (across `researchSynthesis.uri`, `ap
 
 If a URI in `PUBLISHED.md` is missing from the constellation, that's a chain-integrity failure: the URI exists but isn't reachable from the entry point via FORRT chain links. Record it.
 
-The constellation API does NOT enumerate Quote-with-comment / PICO / PCC URIs as a separate `step` (they sit upstream of AIDA). For step 1, verify reachability with a direct fetch:
+The constellation API does NOT enumerate Quote-with-comment / PICO / PCC URIs as a separate `step` (they sit upstream of AIDA). In some chain shapes it also omits the **AIDA** (step 2): the Claim→AIDA link is a shared AIDA-statement IRI (`asAidaStatement → http://purl.org/aida/<sentence>`), not a nanopub reference, so the walk can terminate at the Claim. Treat a missing step 1 — and a missing step-2 AIDA — as **upstream-not-enumerated**, not a chain-integrity failure; still verify those URIs in `PUBLISHED.md` resolve.
+
+Verify each upstream URI with a direct TriG fetch. **Do not test the `…/sciencelive/np/…` form** — it redirects to the HTML viewer and returns HTTP 200 on the SPA shell, so a status-only check passes even when no nanopub is served. Use the **bare resolver form** `https://w3id.org/np/RA…` (swap the prefix) and assert the body is TriG, not HTML:
 
 ```bash
-quote_uri="<step-1-URI>"
-curl -sI --max-time 30 -H "Accept: application/trig" -L "$quote_uri" \
-  | grep -E '^HTTP/' | tail -1
+upstream_uri="<step-1 or, if absent, step-2 AIDA URI>"
+resolver_uri=$(printf '%s' "$upstream_uri" | sed 's#/sciencelive/np/#/np/#')
+body=$(curl -sL --max-time 30 -H "Accept: application/trig" "$resolver_uri")
+case "$(printf '%s' "$body" | head -c 16 | tr 'A-Z' 'a-z')" in
+  '@prefix'*)            echo "PASS — TriG served" ;;
+  '<!doctype'*|'<html'*) echo "FAIL — HTML viewer, not a nanopub" ;;
+  *)                     echo "FAIL — unexpected response" ;;
+esac
 ```
-
-Pass: `200`. Fail: anything else.
 
 ### Step 4 — External consistency
 

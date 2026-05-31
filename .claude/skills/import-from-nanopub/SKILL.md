@@ -81,6 +81,8 @@ The 200 JSON response is the constellation. Top-level keys:
 - `chains[]` — array of `{id, outcomeUri, outcomeVerdict, outcomeConfidence, citoRelations[], steps[]}`
 - `chains[].steps[]` — array of `{step, uri, …}` where `step` is `"AIDA"`, `"Claim"`, `"Study"`, `"Outcome"`, or `"CiTO"` and each step type carries its substantive prose fields inline (Study has `scope`, `method`, `deviations`; Outcome has `label`, `verdict`, `confidence`, `conclusion`, `evidence`, `limitations`, `repository`; CiTO has `relations[]`, `targets[]`)
 
+**Upstream terminus — the constellation may not reach AIDA or Quote.** The Claim→AIDA link is a shared AIDA-statement IRI (`asAidaStatement → http://purl.org/aida/<sentence>`), not a nanopub-to-nanopub reference, and the `/np/constellation` walk follows only nanopub references. For some chain shapes it therefore terminates at the **Claim**: `steps[]` has no `"AIDA"` entry, and the upstream Quote-with-comment / PICO / PCC (step 1) is absent too. This is expected, not a missing-data failure — those upstream nanopubs exist and are valid. If you need the AIDA / Quote prose, recover their URIs from the source chain's `PUBLISHED.md` (or from the Claim's `asAidaStatement` IRI) and fetch them directly via the **bare resolver form** (see Step 3's archival loop). An API-side fix to bridge the AIDA-statement IRI is tracked separately.
+
 ### Step 3 — Cache the response
 
 Write the raw response to `nanopubs/imported/constellation.json` (this directory is gitignored by the template). This is the single source of truth for the rest of the skill.
@@ -96,7 +98,10 @@ Optionally also fetch each step URI's TriG for archival (useful if the user want
 mkdir -p nanopubs/imported/trig
 for uri in $(printf '%s' "$body" | jq -r '.chains[].steps[].uri'); do
   ra_id=$(printf '%s' "$uri" | sed 's|.*/||')
-  curl -sL -H "Accept: application/trig" -o "nanopubs/imported/trig/${ra_id}.trig" "$uri"
+  # The …/sciencelive/np/… form redirects to the HTML viewer; only the bare
+  # w3id.org/np/ resolver form serves TriG. Swap the prefix before fetching.
+  resolver_uri=$(printf '%s' "$uri" | sed 's#/sciencelive/np/#/np/#')
+  curl -sL -H "Accept: application/trig" -o "nanopubs/imported/trig/${ra_id}.trig" "$resolver_uri"
 done
 ```
 
