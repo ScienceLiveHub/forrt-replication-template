@@ -20,28 +20,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Skip if template has not been initialised
+      # Single source of truth — see .github/actions/check-ready. A finished
+      # replication (real URIs in nanopubs/PUBLISHED.md) that would skip here
+      # fails loudly instead of passing green, so a release can't silently
+      # publish nothing to GHCR.
+      - name: Check repository readiness
         id: guard
-        run: |
-          # {{ZENODO_DOI}} is documented to remain unsubstituted until the first
-          # GitHub release mints the concept DOI — so don't treat it as a blocker.
-          # See docs/fair4rs-checklist.md.
-          placeholder_files=$(grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' --include='*.cff' --include='*.py' --include='*.toml' 2>/dev/null \
-            | grep -v 'claude/skills/init-template/' \
-            | while read f; do
-                if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -qv '{{ZENODO_DOI}}'; then
-                  echo "$f"
-                fi
-              done)
-          if [ -n "$placeholder_files" ]; then
-            echo "::notice::Template placeholders detected ({{...}} tokens). Run /init-template before releasing. Skipping Docker build."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: ./.github/actions/check-ready
 
       - name: Log in to GHCR
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -49,7 +37,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -61,7 +49,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -74,7 +62,7 @@ jobs:
       # Zenodo as a separate deposit with its own DOI (per FAIR4RS F1.2).
 
       - name: Export Docker image
-        if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.skip != 'true' }}
+        if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.ready == 'true' }}
         run: |
           TAG="${{ github.event.release.tag_name || 'latest' }}"
           docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG#v} \
@@ -84,7 +72,7 @@ jobs:
           ls -lh docker-image.tar.gz
 
       - name: Upload Docker image to Zenodo
-        if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.skip != 'true' }}
+        if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.ready == 'true' }}
         run: |
           set -euo pipefail
 

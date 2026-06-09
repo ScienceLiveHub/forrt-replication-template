@@ -35,21 +35,19 @@ The FORRT nanopublication chain itself is what makes **R1.2 (provenance)** machi
 Before doing any other work in this repository, run this check:
 
 ```bash
-grep -r \
-  --include='*.md' --include='*.yml' --include='*.json' --include='*.yaml' \
-  --include='*.cff' --include='*.toml' \
-  --include='Dockerfile' --include='LICENSE' \
-  '{{[A-Z_]\+}}' . 2>/dev/null | grep -v '^./.claude/' | grep -v '^./CLAUDE.md' \
-  | while read f; do
-      if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -qv '{{ZENODO_DOI}}'; then
-        echo "$f"
-      fi
-    done | head
+test -f .template-uninitialised && echo "UNINITIALISED"
 ```
 
-`{{ZENODO_DOI}}` is documented to remain unsubstituted until Phase 4 mints the concept DOI (see `docs/fair4rs-checklist.md`), so the guard above ignores it.
+The presence of the `.template-uninitialised` sentinel file is the single
+signal that the template has not been bootstrapped — the same signal CI, Docker,
+and the Jupyter Book workflow use (via `.github/actions/check-ready`). Do **not**
+grep the repo for `{{...}}` tokens to decide this: the template legitimately
+ships literal token examples in `docs/` and `.claude/` (they document the token
+system), and grepping for them is exactly what used to cause false-positive
+skips and silent-green CI. `/init-template` deletes the sentinel as its final
+step.
 
-If the output contains any unsubstituted `{{...}}` token, the template has not been initialised. **Stop**, tell the user:
+If the sentinel file is present, the template has not been initialised. **Stop**, tell the user:
 
 > "This repository still has unsubstituted placeholder tokens from the template. Run `/init-template` to bootstrap it (you'll be asked for author identity, paper DOI, etc.), then we can proceed."
 

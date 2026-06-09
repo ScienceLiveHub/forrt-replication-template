@@ -1,0 +1,54 @@
+name: Check repository readiness
+description: >-
+  Single source of truth for "should this workflow actually run its pipeline?".
+  Returns ready=true once the template has been initialised (the
+  .template-uninitialised sentinel is gone) and the notebooks are no longer
+  scaffolds; otherwise ready=false with an explanatory ::notice::. Fails loudly
+  if the repo looks like a finished replication (real published nanopub URIs in
+  nanopubs/PUBLISHED.md) yet would still skip — the silent-green failure mode.
+
+outputs:
+  ready:
+    description: "'true' when the pipeline should run, 'false' to skip."
+    value: ${{ steps.check.outputs.ready }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      run: |
+        ready=true
+        reason=""
+
+        # 1. Not-initialised: the sentinel is the ONLY signal. No repo-wide
+        #    {{...}} grep — the template legitimately ships literal token
+        #    examples in docs/ and .claude/, which is what used to cause
+        #    false-positive skips (and silent-green CI) downstream.
+        if [ -f .template-uninitialised ]; then
+          ready=false
+          reason="Template not initialised — run /init-template (the .template-uninitialised sentinel is still present)."
+
+        # 2. Scaffold notebooks: initialised, but Phase-2 code not written yet.
+        #    Scoped to notebooks/*.py only, so it can never trip on prose.
+        elif ls notebooks/*.py >/dev/null 2>&1 \
+             && grep -lE 'raise NotImplementedError|"<dataset-name>"|# Example skeleton — adapt' notebooks/*.py >/dev/null 2>&1; then
+          ready=false
+          reason="Notebooks are still scaffolds — implement notebooks/*.py (Phase 2) before the pipeline can run."
+        fi
+
+        if [ "$ready" = "false" ]; then
+          echo "::notice::${reason} Skipping the pipeline steps for this run."
+
+          # Tripwire: a finished replication that still wants to skip is a bug,
+          # not an expected scaffold state. "Finished" = real published nanopub
+          # URIs recorded in nanopubs/PUBLISHED.md (np/RA + >=10 id chars, so the
+          # template's own "np/RA…" example placeholders do NOT match). This is
+          # the check that turns the old silent-green skip into a loud failure.
+          if grep -qE 'w3id\.org/(sciencelive/)?np/RA[A-Za-z0-9_-]{10,}' nanopubs/PUBLISHED.md 2>/dev/null; then
+            echo "::error::${reason} BUT nanopubs/PUBLISHED.md already records published nanopub URIs — this repo is a finished replication and must not be skipping its pipeline. This is the silent-green failure mode the template guards against. Failing instead of passing green; fix the sentinel/scaffold state above."
+            exit 1
+          fi
+        fi
+
+        echo "ready=$ready" >> "$GITHUB_OUTPUT"

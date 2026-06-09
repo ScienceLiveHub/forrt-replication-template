@@ -161,20 +161,27 @@ The constellation JSON contains all the substantive content inline — there's n
 
 Do NOT `git add` any of those paths in Step 10. If you accidentally do, `git status` will show them as new files because `.gitignore` excludes the *unrelated* path; `git add` is permissive about gitignored paths if you list them explicitly. Just don't.
 
-## Step 10 — Self-removal
+## Step 10 — Self-removal and activation
 
-This skill should not exist in the resulting repo. Remove the entire `.claude/skills/init-template/` directory:
+This skill should not exist in the resulting repo. Remove the entire `.claude/skills/init-template/` directory, **and delete the `.template-uninitialised` sentinel** — that sentinel is what makes CI, Docker, and the Jupyter Book workflow skip their pipelines (and what makes the `CLAUDE.md` first-run guard fire). Deleting it activates them:
 
 ```bash
 rm -rf .claude/skills/init-template
+rm -f .template-uninitialised
 ```
 
-Stage and commit the deletion as a separate commit:
+Stage and commit both deletions as a separate commit:
 
 ```bash
 git add -A
-git commit -m "Remove init-template skill (one-shot, no longer needed)"
+git commit -m "Remove init-template skill and activation sentinel (one-shot)"
 ```
+
+> **Why the sentinel matters:** once it's gone, the workflows run for real on the
+> next push. If the notebooks are still scaffolds they'll skip with a `::notice::`
+> (expected) — but once you've also published a nanopub chain, a skip becomes a
+> hard CI failure on purpose (`.github/actions/check-ready`), so a finished
+> replication can never sit on silently-green-but-empty CI.
 
 ## Step 11 — Report
 

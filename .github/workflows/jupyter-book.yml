@@ -18,34 +18,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.guard.outputs.skip }}
+      ready: ${{ steps.guard.outputs.ready }}
       pages_enabled: ${{ steps.pages_check.outputs.pages_enabled }}
     steps:
       - uses: actions/checkout@v5
 
-      - name: Skip if template has not been initialised
+      # Single source of truth — see .github/actions/check-ready.
+      - name: Check repository readiness
         id: guard
-        run: |
-          # {{ZENODO_DOI}} is documented to remain unsubstituted until the first
-          # GitHub release mints the concept DOI — so don't treat it as a blocker.
-          # See docs/fair4rs-checklist.md.
-          placeholder_files=$(grep -rln '{{[A-Z_]\+}}' . --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' --include='*.cff' --include='*.py' --include='*.toml' 2>/dev/null \
-            | grep -v 'claude/skills/init-template/' \
-            | while read f; do
-                if grep -oE '\{\{[A-Z_]+\}\}' "$f" | grep -qv '{{ZENODO_DOI}}'; then
-                  echo "$f"
-                fi
-              done)
-          if [ -n "$placeholder_files" ]; then
-            echo "::notice::Template placeholders detected ({{...}} tokens). Run /init-template inside Claude Code (or substitute manually) before the Jupyter Book builds meaningfully. Skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: ./.github/actions/check-ready
 
       - name: Check whether GitHub Pages is enabled
         id: pages_check
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -58,7 +43,7 @@ jobs:
           fi
 
       - name: Set up pixi
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
           pixi-version: v0.68.1
@@ -67,7 +52,7 @@ jobs:
           environments: docs
 
       - name: Convert .py notebooks to .ipynb
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         run: |
           for nb in notebooks/*.py; do
             pixi run jupytext --to notebook "$nb"
@@ -75,7 +60,7 @@ jobs:
 
       # Glob, not a hard-coded list — new notebooks are picked up automatically.
       - name: Execute notebooks
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         run: |
           for nb in notebooks/*.ipynb; do
             echo "::group::Executing $nb"
@@ -84,7 +69,7 @@ jobs:
           done
 
       - name: Build MyST site
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         env:
           # MyST silently ignores `base_url` in myst.yml — only this env var
           # works. See docs/cicd-conventions.md.
@@ -92,14 +77,14 @@ jobs:
         run: pixi run -e docs myst build --html
 
       - name: Upload pages artifact
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.ready == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: _build/html
 
   deploy:
     needs: build
-    if: needs.build.outputs.skip != 'true' && needs.build.outputs.pages_enabled == 'true'
+    if: needs.build.outputs.ready == 'true' && needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
