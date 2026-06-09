@@ -45,7 +45,7 @@ If you are reading this in a fresh fork, run [`/init-template`](.claude/skills/i
 After `/init-template`, do these one-time setup steps to enable the full CI/CD path:
 
 - **Enable GitHub Pages** at *Settings → Pages → Source: GitHub Actions*. Until enabled, the Jupyter Book build runs but the deploy step is skipped (CI stays green).
-- The CI workflows ship with **scaffold-detection guards** — they run end-to-end only after you implement Phase 2 (the `notebooks/*.py` files). Until then they exit early with an informative `::notice::` and the badges stay green.
+- All three workflows share one **readiness guard** (`.github/actions/check-ready`). Before `/init-template` runs, the `.template-uninitialised` sentinel makes them skip with an informative `::notice::` (badges stay green); `/init-template` deletes the sentinel, which activates them. They also skip while `notebooks/*.py` are still scaffolds (Phase 2). **Once you've published a nanopub chain** (real URIs in `nanopubs/PUBLISHED.md`), a skip is treated as a bug and **fails the run loudly** — so a finished replication can't sit on silently-green-but-empty CI.
 
 ## Repository structure
 
