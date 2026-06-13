@@ -19,13 +19,13 @@ If the upstream paper is already known to have FORRT chains on the network, pref
 
 ## Prerequisite — the replication-radar MCP server
 
-This skill calls the **`replication-radar`** MCP server, declared in this repo's `.mcp.json` and enabled in `.claude/settings.json`. It is launched with `uvx` from source:
+This skill calls the **`replication-radar`** MCP server, declared in this repo's `.mcp.json` and enabled in `.claude/settings.json`. It is launched with `uvx` from PyPI:
 
 ```
-uvx --from git+https://github.com/ScienceLiveHub/replication-radar replication-radar
+uvx replication-radar
 ```
 
-`uv`/`uvx` is already part of the template's toolchain. The server hits the public OpenAIRE Graph API anonymously (no key). If the tools below are not available, tell the user the MCP server isn't connected and to check that `uv` is installed and the `.mcp.json` server was approved.
+`uv`/`uvx` is already part of the template's toolchain (`uvx` fetches the package from PyPI on first use). The server hits the public OpenAIRE Graph API anonymously (no key). If the tools below are not available, tell the user the MCP server isn't connected and to check that `uv` is installed and the `.mcp.json` server was approved.
 
 It exposes three tools:
 
