@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "replication-radar": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/ScienceLiveHub/replication-radar",
+        "replication-radar"
+      ]
+    }
+  }
+}
