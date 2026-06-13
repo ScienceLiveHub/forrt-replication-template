@@ -55,6 +55,21 @@ Don't treat PCC as a generic "research question" template that you can use whene
 
 The mirror mistake — using Quote-with-comment to anchor a question-rooted chain — happens when there's a *related* paper but no specific sentence we're testing. In that case, cite the related paper at the AIDA step's *Supported by other publications* group, but anchor the chain in PICO/PCC.
 
+## Paperless claims (Mode-B) — a claim stated in code / README / blog, not a paper
+
+Not every testable claim lives in a paper. A tool's README, a design note, or a blog post can state a falsifiable claim about how a system behaves. These are first-class — *not everyone who advances knowledge writes a paper, and they shouldn't have to to make a claim that's testable and citable.* But a paperless source has no DOI, which interacts with the chain start:
+
+- **The Quote-with-comment `Cited DOI` field is DOI-only** (it expects a bare `10.x/y`, not a URL). So you cannot quote a raw GitHub / blog / SWHID URL there.
+
+Two clean ways to handle a paperless claim:
+
+1. **Deposit the source to get a DOI, then go paper-rooted.** Archive the code (Software Heritage → SWHID; and/or Zenodo → DOI) or the prose (Zenodo deposit → DOI; Wayback for fixity). Once the source has a DOI, use the normal Quote-with-comment start.
+2. **Go question-rooted (PICO/PCC) and cite the source by URL at the CiTO step.** When there's no DOI to quote, frame the claim as an answered research question (PICO/PCC), then at the CiTO Citation step cite the artifact by URL — the CiTO *"DOI **or other URL**"* field accepts any resolvable URI. This is usually the right shape for a claim that isn't quoting a paper anyway.
+
+**Anchor the source on the most durable artifact identifier available**, in order: **SWHID** (code, forge-agnostic) > **Zenodo DOI** > repo URL > Wayback-snapshotted page URL.
+
+**Credit the original author by any resolvable URI** inside the nanopub (`prov:wasAttributedTo`): an ORCID if they have one, else an institutional profile or `https://github.com/<user>` — never force an ORCID on a non-academic author (that would re-impose the gatekeeping Mode-B exists to bypass). Note the *signer* of the nanopub stays the Science Live user's ORCID; only the *referenced* source and its author may be a non-DOI / non-ORCID URI.
+
 ## What happens after Phase 5
 
 Once a single chain is published, you have three optional layers:

@@ -1,0 +1,64 @@
+name: Archive web sources in the Wayback Machine
+
+# On release (and via workflow_dispatch), submit this project's web sources to the
+# Internet Archive Wayback Machine ("Save Page Now") for an immutable, timestamped
+# snapshot. Two kinds of source are captured:
+#   1. The deployed MyST / Jupyter Book site. The repo *source* is preserved in
+#      Software Heritage (swh-save.yml) and Zenodo (docker.yml), but the rendered
+#      *site* is not — this captures it.
+#   2. Any URLs listed in `wayback-urls.txt` at the repo root (one per line, '#'
+#      comments allowed). Use this for Mode-B / paperless claim sources — blogs,
+#      design notes, README pages — that Software Heritage cannot archive because
+#      they are prose, not code.
+#
+# Uses anonymous Save Page Now (no secrets); it is rate-limited. If you hit limits,
+# switch to the authenticated SPN2 API: add Internet Archive S3-style keys as the
+# secrets IA_ACCESS_KEY / IA_SECRET_KEY and an
+#   -H "Authorization: LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}"
+# header to the curl call below.
+#
+# STATUS: written, NOT yet executed. Validate via Actions -> Run workflow and check
+# the run log + the resulting web.archive.org snapshot URLs.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wayback:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # best-effort archival must never fail the release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build URL list
+        run: |
+          repo="${{ github.repository }}"          # owner/name
+          owner="${repo%%/*}"
+          name="${repo#*/}"
+          pages="https://${owner}.github.io/${name}/"
+          {
+            echo "${pages}"
+            if [ -f wayback-urls.txt ]; then
+              grep -vE '^[[:space:]]*(#|$)' wayback-urls.txt || true
+            fi
+          } > /tmp/wayback-urls.txt
+          echo "URLs to archive:"; cat /tmp/wayback-urls.txt
+
+      - name: Submit to Wayback Machine (Save Page Now)
+        run: |
+          while IFS= read -r url; do
+            [ -z "${url}" ] && continue
+            echo "::group::Archiving ${url}"
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -A "forrt-replication-template wayback workflow" \
+              "https://web.archive.org/save/${url}") || code="000"
+            echo "HTTP ${code} for ${url}"
+            echo "Latest snapshot: https://web.archive.org/web/2/${url}"
+            echo "::endgroup::"
+            sleep 5   # be polite to the Internet Archive endpoint
+          done < /tmp/wayback-urls.txt

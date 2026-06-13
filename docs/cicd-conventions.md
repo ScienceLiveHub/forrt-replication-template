@@ -168,6 +168,26 @@ If a bad description is already on Zenodo: edit in place via `zenodo.org/records
 
 ---
 
+## Preservation: Zenodo (release), Software Heritage (code), Wayback (web sources)
+
+Three release-time archival paths, each with a distinct job. They are complementary, not redundant — capture all three where applicable.
+
+| Workflow | Archives | Identifier | Coverage |
+|---|---|---|---|
+| `docker.yml` (Zenodo) | the release source tarball + (optionally) the Docker image | Zenodo concept DOI | GitHub-only auto-archival |
+| `swh-save.yml` (Software Heritage) | the source tree at the released revision | **SWHID** (ISO/IEC standard) | forge-agnostic — GitHub, GitLab.com, self-hosted GitLab, any git |
+| `wayback.yml` (Internet Archive) | the deployed Jupyter Book site + the URLs in `wayback-urls.txt` | timestamped `web.archive.org` snapshot | web pages (prose), not code |
+
+Conventions:
+
+- **Code → Software Heritage (SWHID).** SWH is the universal, forge-agnostic anchor: it covers GitLab / self-hosted forks that Zenodo's GitHub-only integration misses. `swh-save.yml` requests Save Code Now on each release. Zenodo gives the *citable release + metadata DOI*; SWH gives the *immutable code identity*. Capture both.
+- **Prose / web sources → Wayback.** Blogs, design notes, README pages that state a claim are not code, so Software Heritage cannot archive them. List them in `wayback-urls.txt`; `wayback.yml` snapshots them (plus the deployed book site) on release. Pair with a Zenodo deposit if a citable DOI is also wanted.
+- **Never anchor on a conda package.** Software Heritage's conda loader is not in production; built conda-forge / bioconda *artifacts* are not archived. The recipes (feedstock GitHub repos) and upstream source repos *are* archived (as git). So anchor reproducibility on **pinned `pixi.toml` / `pixi.lock` + the source repo's SWHID + the container image on Zenodo** — not the conda artifact.
+
+All three workflows trigger only on `release` (plus manual `workflow_dispatch`), so they never run on an uninitialised template or on routine pushes.
+
+---
+
 ## Long-running experiments — don't poll
 
 If an analysis takes more than ~5 minutes:

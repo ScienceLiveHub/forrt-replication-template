@@ -122,8 +122,9 @@ Exit: `nanopubs/drafts/05_outcome.md` is written with the conclusion sentence, t
 - A GitHub release is cut with a Zenodo-facing description (no internal ops detail, no bot signatures — `docs/cicd-conventions.md` § Release notes are Zenodo descriptions).
 - Zenodo mints a concept DOI; the value is written into `CITATION.cff` and `codemeta.json`.
 - The Docker image is pushed to GHCR via `.github/workflows/docker.yml` and (optionally) archived on Zenodo.
+- On release, two further archival workflows fire automatically (best-effort, never block the release): `swh-save.yml` requests **Software Heritage** Save Code Now so the released revision gets a permanent, forge-agnostic **SWHID**, and `wayback.yml` snapshots the deployed Jupyter Book site plus any URLs in `wayback-urls.txt` (Mode-B / paperless claim sources) in the **Internet Archive Wayback Machine**. See `docs/cicd-conventions.md` § Preservation.
 
-Exit: the release page is live, the Zenodo record exists, and `nanopubs/PUBLISHED.md` lists the source + image DOIs.
+Exit: the release page is live, the Zenodo record exists, and `nanopubs/PUBLISHED.md` lists the source + image DOIs. (Software Heritage + Wayback archival are best-effort and may complete asynchronously.)
 
 ### Phase 5 — FORRT nanopublication chain
 
