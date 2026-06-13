@@ -9,6 +9,7 @@
 [![FORRT](https://img.shields.io/badge/FORRT-replication-blue)](https://forrt.org/)
 [![Science Live](https://img.shields.io/badge/Science%20Live-nanopub%20chain-purple)](nanopubs/PUBLISHED.md)
 [![RO-Crate](https://img.shields.io/badge/RO--Crate-1.2-orange)](ro-crate-metadata.json)
+[![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/{{REPO_ORG}}/{{REPO_NAME}}/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/{{REPO_ORG}}/{{REPO_NAME}})
 
 > **{{PAPER_TITLE}}** — replication study.
 > Reference paper: [{{PAPER_DOI}}](https://doi.org/{{PAPER_DOI}})

@@ -1,0 +1,52 @@
+name: Archive source in Software Heritage
+
+# On each GitHub release, ask Software Heritage to archive this repository via its
+# "Save Code Now" API, so the released revision gets a permanent, forge-agnostic,
+# ISO/IEC-standard SWHID (the universal software identifier). This complements the
+# Zenodo deposit in docker.yml: Zenodo gives a citable release+metadata DOI (GitHub
+# only); Software Heritage gives an immutable code identity that also works for
+# GitLab/self-hosted forks.
+#
+# Runs ONLY on release (per Software Heritage guidance: do not hammer the API).
+# workflow_dispatch allows a manual re-request / smoke test.
+#
+# No secrets required: anonymous save requests on GitHub origins are accepted and
+# auto-scheduled. If anonymous requests are ever rejected, create a Software
+# Heritage API bearer token, add it as the repo secret SWH_TOKEN, and add
+#   -H "Authorization: Bearer ${SWH_TOKEN}"
+# to the curl call below.
+#
+# STATUS: written, NOT yet executed. Validate by running this workflow once
+# (Actions tab -> "Run workflow") or by cutting a test release, then check the run
+# log and the Software Heritage requests page linked in the output.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  swh-save:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # best-effort archival must never fail the release
+    steps:
+      - name: Request Software Heritage archival
+        env:
+          ORIGIN: https://github.com/${{ github.repository }}
+        run: |
+          echo "Requesting Software Heritage to archive ${ORIGIN}"
+          response=$(curl -sS -X POST \
+            "https://archive.softwareheritage.org/api/1/origin/save/git/url/${ORIGIN}/" \
+            -H "Accept: application/json")
+          echo "Software Heritage response:"
+          echo "${response}"
+          status=$(printf '%s' "${response}" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('save_request_status', 'unknown'))" \
+            2>/dev/null || echo "unparsed")
+          echo "save_request_status: ${status}"
+          echo "Track this origin's archival at:"
+          echo "  https://archive.softwareheritage.org/browse/origin/?origin_url=${ORIGIN}"
+          echo "  https://archive.softwareheritage.org/save/#requests  (search '${{ github.repository }}')"
