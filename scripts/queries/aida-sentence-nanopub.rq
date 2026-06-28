@@ -1,0 +1,21 @@
+# Resolve a FORRT Claim's AIDA sentence to its AIDA-Sentence nanopub.
+#
+# A FORRT Claim points at its AIDA sentence with
+#   <claim> sciencelive:asAidaStatement <http://purl.org/aida/<sentence>>
+# and a *separate* AIDA-Sentence nanopub asserts that same
+# `http://purl.org/aida/<sentence>` resource (typed petapico hycl:AIDA-Sentence).
+# The curated `npa:refersToNanopub` graph does NOT materialise the Claim -> AIDA
+# edge, so the constellation importer resolves it here: find the nanopub whose
+# assertion has the AIDA-sentence URI as a subject.
+#
+# Placeholder: `${aidaUri}` - the `http://purl.org/aida/...` sentence URI.
+
+prefix np: <http://www.nanopub.org/nschema#>
+
+select distinct ?np where {
+  ?np np:hasAssertion ?assertion .
+  graph ?assertion {
+    <${aidaUri}> ?p ?o .
+  }
+}
+limit 20

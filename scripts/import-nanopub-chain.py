@@ -364,6 +364,107 @@ def discover_neighbours(uri: str) -> set[str]:
     return out
 
 
+# --- FORRT-backbone discovery (edges the curated graph doesn't materialise) ---
+#
+# The KnowledgePixels `npa:refersToNanopub` graph (used by discover_neighbours)
+# only links some FORRT steps — in practice CiTO <-> Outcome. The rest of the
+# chain is connected by *domain* predicates that the network graph doesn't
+# index, so a refersToNanopub-only BFS stops after two nodes. We recover the
+# full chain by reading those predicates out of each node's TriG:
+#
+#     Outcome --isOutcomeOf-->  Study
+#     Study   --targetsClaim--> Claim
+#     Claim   --asAidaStatement--> <purl.org/aida/...> --(asserted by)--> AIDA
+#     AIDA    --related-->      Quote
+#
+# To stay robust we don't hard-code the predicate list (templates evolve):
+# we follow *every* nanopub a node points at, then keep only the targets that
+# are themselves FORRT chain steps (so value-lists, templates, papers and other
+# noise are dropped and never crawled).
+
+# Ordered most-specific first; the first match wins.
+_CHAIN_STEP_PATTERNS = [
+    ("Outcome", re.compile(r"/o/terms/[A-Za-z-]*Replication-Outcome", re.I)),
+    ("Study",   re.compile(r"/o/terms/[A-Za-z-]*Replication-Study", re.I)),
+    ("Claim",   re.compile(r"/o/terms/FORRT-Claim", re.I)),
+    ("AIDA",    re.compile(r"/petapico/o/hycl#AIDA-Sentence", re.I)),
+    ("Quote",   re.compile(r"hasQuotedText", re.I)),
+    ("CiTO",    re.compile(r"/spar/cito/", re.I)),
+]
+
+
+def chain_step_kind(trig_text: str) -> str | None:
+    """Classify a nanopub's TriG as a FORRT chain step (or None for non-steps
+    like templates, value-lists, papers)."""
+    for kind, rx in _CHAIN_STEP_PATTERNS:
+        if rx.search(trig_text):
+            return kind
+    return None
+
+
+def _cached_trig_text(uri: str, cache_dir: Path, timeout: int) -> str:
+    """Fetch (and cache) a nanopub's TriG, returning '' on failure."""
+    ra_id = uri.rsplit("/", 1)[-1]
+    path = cache_dir / f"{ra_id}.trig"
+    if not path.exists():
+        try:
+            path.write_text(fetch_trig(uri, timeout=timeout))
+        except Exception:  # noqa: BLE001
+            return ""
+    return path.read_text(errors="replace")
+
+
+def find_aida_nanopubs(aida_uri: str) -> list[str]:
+    """Find the AIDA-Sentence nanopub(s) asserting a given AIDA-sentence URI
+    (the Claim -> AIDA hop that refersToNanopub doesn't link)."""
+    try:
+        rows = sparql_query(substitute(load_query("aida-sentence-nanopub"),
+                                       aidaUri=aida_uri))
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for r in rows:
+        canon = canonical_nanopub_uri(r["np"]) if "np" in r else None
+        if canon:
+            out.append(canon)
+    return out
+
+
+def backbone_neighbours(uri: str, trig_path: Path, cache_dir: Path,
+                        timeout: int) -> set[str]:
+    """FORRT-backbone neighbours of a node that the curated refersToNanopub
+    graph misses: every nanopub the node points at (plus the asAidaStatement ->
+    AIDA hop), filtered to those that are themselves FORRT chain steps."""
+    out: set[str] = set()
+    graph = ConjunctiveGraph()
+    try:
+        graph.parse(source=str(trig_path), format="trig")
+    except Exception:  # noqa: BLE001
+        return out
+
+    candidates: set[str] = set()
+    aida_uris: set[str] = set()
+    for s, p, o in graph.triples((None, None, None)):
+        if not isinstance(o, URIRef):
+            continue
+        if str(p).endswith("asAidaStatement"):
+            aida_uris.add(str(o))          # http://purl.org/aida/<sentence>
+            continue
+        canon = canonical_nanopub_uri(str(o))
+        if canon and canon != uri:
+            candidates.add(canon)
+    for au in aida_uris:
+        candidates.update(find_aida_nanopubs(au))
+
+    for canon in candidates:
+        if canon == uri:
+            continue
+        text = _cached_trig_text(canon, cache_dir, timeout)
+        if text and chain_step_kind(text):
+            out.add(canon)
+    return out
+
+
 # --- BFS using SPARQL neighbourhood --------------------------------------
 
 def walk(entry_uri: str, depth_limit: int, max_nodes: int, timeout: int,
@@ -424,14 +525,22 @@ def walk(entry_uri: str, depth_limit: int, max_nodes: int, timeout: int,
             except Exception as e:  # noqa: BLE001
                 print(f"    ! neighbour discovery failed: {e}", file=sys.stderr)
                 neighbours = set()
+            # The curated refersToNanopub graph misses most FORRT-chain edges
+            # (Outcome->Study->Claim->AIDA->Quote); recover them from the TriG.
+            try:
+                backbone = backbone_neighbours(uri, trig_path, cache_dir, timeout)
+            except Exception as e:  # noqa: BLE001
+                print(f"    ! backbone discovery failed: {e}", file=sys.stderr)
+                backbone = set()
             # Exclude template URIs the node was created from — those are
             # template definitions, not chain steps. Same for any URI that
             # appears anywhere as the target of `wasCreatedFromTemplate`.
             template_targets = {node.template_uri} if node.template_uri else set()
-            for n in neighbours:
+            for n in neighbours | backbone:
                 if n in template_targets:
                     continue
-                edges.append(EdgeSummary(source=uri, target=n, relation="refersTo"))
+                relation = "refersTo" if n in neighbours else "backbone"
+                edges.append(EdgeSummary(source=uri, target=n, relation=relation))
                 if n not in visited:
                     queue.append((n, depth + 1))
 
