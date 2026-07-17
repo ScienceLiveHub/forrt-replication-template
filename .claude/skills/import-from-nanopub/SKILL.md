@@ -197,7 +197,14 @@ for repo in $(printf '%s' "$body" | jq -r '.chains[].steps[] | select(.step=="Ou
 done
 ```
 
-Write `nanopubs/imported/SETUP_INHERITED.md` listing each resolved URL, where it was cloned, and which starter files were copied to `_template_from_prior/`. The legacy `scripts/import-nanopub-chain.py` still implements the cloning + staging logic if you'd rather call it (`python3 scripts/import-nanopub-chain.py --infrastructure-only --constellation-json nanopubs/imported/constellation.json`); both paths produce the same `SETUP_INHERITED.md` output.
+`scripts/inherit_sibling_repos.py` does exactly this — reads the cached constellation, resolves each Outcome's `repository` (Zenodo DOIs included), clones the siblings, stages the starter files, and writes `SETUP_INHERITED.md`. Prefer it over hand-rolling the loop above:
+
+```bash
+pixi run python scripts/inherit_sibling_repos.py \
+  --constellation-json nanopubs/imported/constellation.json
+```
+
+Pass `--no-clone-siblings` to skip the `git clone` step (staging then only proceeds for siblings already present under `../`).
 
 ### Step 6 — Hand off
 
@@ -221,7 +228,7 @@ If `SETUP_INHERITED.md` reports files were staged to `_template_from_prior/`:
 - **`paperDoi` is null** — the constellation didn't surface an upstream DOI. Check the `chains[].steps[step="CiTO"].targets[]` manually; the paper DOI is usually in there.
 - **All `step` values look correct but prose fields are empty** — the published nanopubs may use a non-standard template version. The constellation API extracts fields from known templates; if a chain uses a custom template, fall back to fetching the TriG manually via Step 3's optional block.
 - **`Could not resolve <Zenodo DOI> to a GitHub URL`** — the Zenodo record's `related_identifiers` don't include a GitHub link. Common in older deposits; ask the user to manually add the GitHub URL, or visit the Zenodo page and clone the linked repo manually.
-- **`git clone failed`** — repo is private, network down, or rate-limited. Continue without cloning; tell the user to clone manually and re-run with `--infrastructure-only`.
+- **`git clone failed`** — repo is private, network down, or rate-limited. Continue without cloning; tell the user to clone the repo manually under `../`, then re-run `scripts/inherit_sibling_repos.py --no-clone-siblings` to stage from the local clone.
 - **Inherited file conflicts** — `_template_from_prior/` files start fresh each import. If you re-run with different siblings, prior staging is overwritten. Don't store work-in-progress edits in `_template_from_prior/`.
 
 ## Companion docs
