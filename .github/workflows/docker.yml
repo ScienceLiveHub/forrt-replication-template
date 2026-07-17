@@ -63,7 +63,15 @@ jobs:
 
       - name: Export Docker image
         if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.ready == 'true' }}
+        # `shell: bash` is required, not cosmetic: the default shell for a `run:`
+        # step is `bash -e {0}` — `set -e` only, WITHOUT pipefail. Naming the
+        # shell explicitly gets `set -eo pipefail`, so a failing `docker save`
+        # can no longer be masked by gzip's exit 0 and publish a truncated
+        # tarball to Zenodo under a real DOI.
+        shell: bash
         run: |
+          set -euo pipefail
+
           TAG="${{ github.event.release.tag_name || 'latest' }}"
           docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG#v} \
               | gzip > docker-image.tar.gz
@@ -71,16 +79,53 @@ jobs:
           echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
           ls -lh docker-image.tar.gz
 
+          # Belt and braces: pipefail catches a failed `docker save`, this
+          # catches an image that exported "successfully" but is obviously not a
+          # container. A real image is tens of MB; anything under 1 MB is a bug.
+          size=$(stat -c%s docker-image.tar.gz)
+          echo "Exported ${size} bytes"
+          if [ "${size}" -lt 1000000 ]; then
+            echo "::error::docker-image.tar.gz is only ${size} bytes — the export produced a truncated or empty archive. Refusing to deposit it to Zenodo, where it would receive a permanent DOI."
+            exit 1
+          fi
+
       - name: Upload Docker image to Zenodo
         if: ${{ env.ZENODO_TOKEN != '' && steps.guard.outputs.ready == 'true' }}
+        # See the Export step: `shell: bash` is what actually enables pipefail.
+        # `set -euo pipefail` below is a no-op for pipes without it.
+        shell: bash
         run: |
           set -euo pipefail
+
+          # zcurl <what> <curl args...>
+          #
+          # Every Zenodo call below used plain `curl -s`, which exits 0 on HTTP
+          # 4xx/5xx — so `set -euo pipefail` never fired and only the deposit
+          # creation was ever checked. A failed upload/metadata/publish sailed
+          # through to `DOI=null` and an echo saying it had been published.
+          # `curl -f` would fix the exit code but throw away the response body
+          # that says WHY Zenodo refused, so capture both.
+          zcurl() {
+            local what="$1"; shift
+            local out code
+            out=$(curl -sS -w '\n__HTTP__%{http_code}' "$@") || {
+              echo "::error::${what}: could not reach Zenodo."
+              exit 1
+            }
+            code=${out##*__HTTP__}
+            out=${out%$'\n'__HTTP__*}
+            if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then
+              echo "::error::${what} failed (HTTP ${code}). Zenodo said: ${out}"
+              exit 1
+            fi
+            printf '%s' "${out}"
+          }
 
           REPO_NAME="${{ github.event.repository.name }}"
           TAG="${IMAGE_TAG}"
           REPO_URL="${{ github.event.repository.html_url }}"
 
-          RESPONSE=$(curl -s -X POST "https://zenodo.org/api/deposit/depositions" \
+          RESPONSE=$(zcurl "Create Zenodo deposit" -X POST "https://zenodo.org/api/deposit/depositions" \
             -H "Authorization: Bearer ${ZENODO_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{}')
@@ -95,11 +140,10 @@ jobs:
           echo "Created Zenodo deposit: $DEPOSIT_ID"
 
           FILENAME="${REPO_NAME}-${TAG}-docker.tar.gz"
-          curl -s -X PUT "${BUCKET_URL}/${FILENAME}" \
+          zcurl "Upload ${FILENAME} to Zenodo" -X PUT "${BUCKET_URL}/${FILENAME}" \
             -H "Authorization: Bearer ${ZENODO_TOKEN}" \
             -H "Content-Type: application/octet-stream" \
-            -T docker-image.tar.gz \
-            --progress-bar | cat
+            -T docker-image.tar.gz > /dev/null
 
           echo "Uploaded ${FILENAME}"
 
@@ -136,15 +180,29 @@ jobs:
           METAEOF
           )
 
-          curl -s -X PUT "https://zenodo.org/api/deposit/depositions/${DEPOSIT_ID}" \
+          zcurl "Set Zenodo deposit metadata" -X PUT "https://zenodo.org/api/deposit/depositions/${DEPOSIT_ID}" \
             -H "Authorization: Bearer ${ZENODO_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "$METADATA"
+            -d "$METADATA" > /dev/null
 
-          PUBLISH_RESPONSE=$(curl -s -X POST \
+          PUBLISH_RESPONSE=$(zcurl "Publish Zenodo deposit ${DEPOSIT_ID}" -X POST \
             "https://zenodo.org/api/deposit/depositions/${DEPOSIT_ID}/actions/publish" \
             -H "Authorization: Bearer ${ZENODO_TOKEN}")
 
           DOI=$(echo "$PUBLISH_RESPONSE" | jq -r '.doi')
+          STATE=$(echo "$PUBLISH_RESPONSE" | jq -r '.state')
+
+          # A 2xx from the publish endpoint is necessary but not sufficient:
+          # assert we actually got a DOI and the record reached 'done'. Without
+          # this the old code happily echoed "Published ... with DOI: null".
+          if [ "${DOI}" = "null" ] || [ -z "${DOI}" ]; then
+            echo "::error::Zenodo accepted the publish request but returned no DOI (state='${STATE}'). The image is NOT archived. Response: ${PUBLISH_RESPONSE}"
+            exit 1
+          fi
+          if [ "${STATE}" != "done" ]; then
+            echo "::error::Zenodo deposit ${DEPOSIT_ID} is in state '${STATE}', not 'done' — the image is NOT published. Response: ${PUBLISH_RESPONSE}"
+            exit 1
+          fi
+
           echo "Published Docker image to Zenodo with DOI: ${DOI}"
           echo "ZENODO_DOI=${DOI}" >> $GITHUB_ENV

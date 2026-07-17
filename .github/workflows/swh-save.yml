@@ -31,7 +31,10 @@ permissions:
 jobs:
   swh-save:
     runs-on: ubuntu-latest
-    continue-on-error: true   # best-effort archival must never fail the release
+    # NO continue-on-error. This job is *triggered by* release:published — the
+    # release already exists by the time it runs, so it cannot block anything.
+    # All continue-on-error bought was concealment: a rejected save request
+    # reported green and the repo silently went unarchived.
     steps:
       - uses: actions/checkout@v5
 
@@ -46,19 +49,54 @@ jobs:
 
       - name: Request Software Heritage archival
         if: steps.guard.outputs.ready == 'true'
+        shell: bash
         env:
           ORIGIN: https://github.com/${{ github.repository }}
         run: |
+          set -euo pipefail
+
           echo "Requesting Software Heritage to archive ${ORIGIN}"
-          response=$(curl -sS -X POST \
+
+          # Capture the HTTP status separately: curl exits 0 on a 4xx/5xx unless
+          # -f is given, and -f discards the response body that says *why* the
+          # request was refused. So take both.
+          body=$(curl -sS -X POST -w '\n__HTTP__%{http_code}' \
             "https://archive.softwareheritage.org/api/1/origin/save/git/url/${ORIGIN}/" \
-            -H "Accept: application/json")
+            -H "Accept: application/json") || {
+              echo "::error::Could not reach the Software Heritage Save Code Now API. The released revision is NOT archived."
+              exit 1
+            }
+          code=${body##*__HTTP__}
+          body=${body%$'\n'__HTTP__*}
+
+          echo "HTTP ${code}"
           echo "Software Heritage response:"
-          echo "${response}"
-          status=$(printf '%s' "${response}" \
-            | python3 -c "import sys, json; print(json.load(sys.stdin).get('save_request_status', 'unknown'))" \
+          echo "${body}"
+
+          if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then
+            echo "::error::Software Heritage refused the save request (HTTP ${code}). The released revision is NOT archived. A 429 means rate-limited — re-run this workflow (Actions -> Run workflow) once it clears."
+            exit 1
+          fi
+
+          status=$(printf '%s' "${body}" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('save_request_status', 'unparsed'))" \
             2>/dev/null || echo "unparsed")
           echo "save_request_status: ${status}"
+
+          # 'accepted' / 'pending' both mean SWH has taken the request and will
+          # schedule a visit. Anything else — including a body we cannot parse —
+          # means we do not know that this revision is being archived, and
+          # "we don't know" must not report green.
+          case "${status}" in
+            accepted|pending)
+              echo "Software Heritage accepted the request; the visit runs asynchronously."
+              ;;
+            *)
+              echo "::error::Software Heritage did not accept the save request (save_request_status='${status}'). The released revision is NOT archived."
+              exit 1
+              ;;
+          esac
+
           echo "Track this origin's archival at:"
           echo "  https://archive.softwareheritage.org/browse/origin/?origin_url=${ORIGIN}"
           echo "  https://archive.softwareheritage.org/save/#requests  (search '${{ github.repository }}')"
