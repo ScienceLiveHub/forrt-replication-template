@@ -10,10 +10,37 @@
 
 ### URI of published software (text input, required)
 
-Zenodo concept DOI URL when available, or a GitHub URL. Full URL form.
+Use the Zenodo **version DOI** URL — `https://doi.org/10.5281/zenodo.<N>` for the
+specific release, NOT the concept DOI. Full URL form. Fall back to a GitHub URL
+only if there is no Zenodo deposit at all.
+
+> **Why the version DOI, not the concept DOI.** A concept DOI resolves to
+> whatever version is *latest*. This nanopub is signed and immutable — once
+> published it can only be retracted or superseded, never edited. If it names a
+> concept DOI, then the moment a v0.2.0 is released this permanent record
+> silently starts describing different code, with no signature breakage and
+> nothing to alert a reader. The version DOI pins the snapshot that actually
+> exists behind this assertion.
+>
+> Both DOIs are in `CITATION.cff` under `identifiers:`, recorded automatically at
+> release by `.github/workflows/release-identifiers.yml`. Take the one described
+> as *"Version DOI"*. The concept DOI is correct in `CITATION.cff`'s top-level
+> `doi:` field — "cite this project" — and wrong here.
 
 ```
-{{ZENODO_DOI}}
+https://doi.org/{{ZENODO_VERSION_DOI}}
+```
+
+### Software Heritage ID (optional but recommended)
+
+The SWHID from `CITATION.cff` `identifiers:` (`type: swh`). It identifies the
+exact source tree in a preservation archive, so it still resolves if the repo is
+deleted, renamed, or force-pushed — which a DOI pointing at a GitHub URL does
+not. `docs/chain-decision-tree.md` ranks it above the Zenodo DOI for exactly
+this reason.
+
+```
+{{SWHID}}
 ```
 
 ### Software Title (text input, required)

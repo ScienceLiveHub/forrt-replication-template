@@ -28,6 +28,26 @@ on:
 #   CDSAPI_KEY: ${{ secrets.CDSAPI_KEY }}
 
 jobs:
+  # Unit tests for scripts/. Deliberately NOT gated on check-ready: these test
+  # the template's own tooling, which is identical in every repo built from it,
+  # so they must run on the uninitialised template too. pixi.toml has declared a
+  # `tests` feature with pytest since the beginning and nothing ever invoked it.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          pixi-version: v0.68.1
+          environments: tests
+          locked: true
+          cache: true
+
+      - name: Run tests
+        run: pixi run -e tests test
+
   run:
     runs-on: ubuntu-latest
     steps:

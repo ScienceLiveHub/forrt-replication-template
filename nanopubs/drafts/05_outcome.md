@@ -32,8 +32,23 @@ URI of the Replication Study published in step 04. Pull from `nanopubs/PUBLISHED
 
 ### Repository URL (text input, required)
 
+Use the Zenodo **version DOI** URL for the release the results came from — not a
+bare branch URL, and not the concept DOI.
+
+> **Why not the bare repo URL.** `https://github.com/ORG/REPO` names a *moving
+> branch*. This Outcome asserts "this code produced this number", in a signed,
+> immutable record. A branch URL means that assertion points at whatever `main`
+> happens to be years from now — code that may never have produced the number
+> above. A concept DOI has the same flaw: it resolves to the latest version.
+> The version DOI pins the exact release. `docs/chain-decision-tree.md` § Anchor
+> ranks the options: SWHID > Zenodo DOI > repo URL > Wayback.
+>
+> Both DOIs and the SWHID are in `CITATION.cff` under `identifiers:`, recorded
+> automatically at release by `.github/workflows/release-identifiers.yml`. Take
+> the one described as *"Version DOI"*.
+
 ```
-https://github.com/{{REPO_ORG}}/{{REPO_NAME}}
+https://doi.org/{{ZENODO_VERSION_DOI}}
 ```
 
 ### Completion date (date picker, required)

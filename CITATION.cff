@@ -11,13 +11,26 @@ repository-code: "https://github.com/{{REPO_ORG}}/{{REPO_NAME}}"
 license: MIT
 version: "0.1.0"
 date-released: "{{RELEASE_DATE}}"
-# After your first GitHub release the Zenodo integration mints a concept DOI.
-# Replace this once available (run /init-template again or edit by hand):
+# Identifiers below are recorded AUTOMATICALLY on each release by
+# .github/workflows/release-identifiers.yml — don't fill them in by hand.
+#
+# `doi:` is the CONCEPT DOI: it means "cite this project" and deliberately
+# resolves to whatever version is latest. That floating behaviour is correct
+# HERE and wrong in a nanopub — see scripts/set_release_identifiers.py.
+#
+# (This used to say "run /init-template again or edit by hand". /init-template
+# deletes itself as its final step, so by the time a DOI existed the skill it
+# named was gone and "edit by hand" was the only path left. Two repos built from
+# this template then recorded the version DOI two different ways — one a
+# structured identifier, one a prose comment. Hence the automation.)
 doi: "{{ZENODO_DOI}}"
 identifiers:
   - type: doi
     value: "{{ZENODO_DOI}}"
-    description: "Concept DOI (resolves to the latest version)"
+    description: "Concept DOI (resolves to the latest version) — cite the project"
+  # On release, the workflow adds:
+  #   - type: doi   value: <version DOI>  "Version DOI for vX.Y.Z — pins this exact release; cite this from nanopubs"
+  #   - type: swh   value: swh:1:rev:<commit>;origin=<repo>  "Software Heritage ID of the vX.Y.Z source tree"
 keywords:
   - replication
   - reproducibility
