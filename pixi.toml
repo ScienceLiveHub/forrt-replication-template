@@ -57,6 +57,10 @@ mystmd = "*"
 
 [feature.tests.dependencies]
 pytest = "*"
+# ruamel.yaml round-trips YAML *with* its comments. scripts/set_release_identifiers.py
+# rewrites CITATION.cff in place, and pyyaml would silently delete every
+# explanatory comment in it.
+"ruamel.yaml" = "*"
 
 [environments]
 default = { solve-group = "default" }
@@ -67,3 +71,10 @@ tests = { features = ["tests"], solve-group = "default" }
 run = "snakemake --cores 1"
 book = "myst build --html"
 lab = "jupyter lab"
+
+# The `tests` feature and environment already existed here; nothing declared a
+# task and no workflow ever invoked pytest, so it was scaffolding that had never
+# run. Wired into ci.yml.
+#   pixi run -e tests test
+[feature.tests.tasks]
+test = "pytest tests/ -q"
