@@ -38,34 +38,35 @@ A new replication that ignores this prior signed record is doing twice the work:
 
 - The upstream paper has no FORRT chains on the network at all. Use paper-rooted Phase 1.
 - You're starting a question-rooted chain (no upstream paper) — there's nothing to import.
-- The entry URI is from outside the Science Live / nanopub network — the importer is network-specific. SPARQL queries against the full nanopub network exist (see `feedback_nanopub_uri_verification.md` for the verification side) but the importer here only walks links, it doesn't search.
+- The entry URI is from outside the Science Live / nanopub network — the constellation endpoint is network-specific. To *search* the full nanopub network for chains that are about the same paper but don't reference your entry URI, see `feedback_nanopub_uri_verification.md` (the verification side); the constellation walk only follows references reachable from the entry URI.
 
 ## How to run
 
-```bash
-python3 scripts/import-nanopub-chain.py \
-    https://w3id.org/sciencelive/np/RA1q6c0fG2bMbiozF8Az2UpIfzAzqp8hoVEl6QIzfUpH8
-```
+The entry point is the `/import-from-nanopub` skill, which calls Science Live's `/np/constellation` endpoint for the entry URI and caches the response at `nanopubs/imported/constellation.json`. That JSON is the claim-layer import — every reachable chain step with its prose inline. The skill then writes the human-/AI-readable `nanopubs/imported/CHAIN_SUMMARY.md` from it. See `.claude/skills/import-from-nanopub/SKILL.md` for the full procedure (API key, request, failure modes).
 
-Then read the AI's summary at `nanopubs/imported/CHAIN_SUMMARY.md`. The full procedure is in `.claude/skills/import-from-nanopub/SKILL.md`.
+The infrastructure layer — cloning the sibling repos of the prior chain and staging their reusable files — is a separate step the skill runs after caching the constellation:
+
+```bash
+pixi run python scripts/inherit_sibling_repos.py \
+    --constellation-json nanopubs/imported/constellation.json
+```
 
 ## What an "ideal" import looks like
 
-For a well-published constellation (Bombus example, apex CiTO `RA1q6c0f…`):
+For a well-published constellation (Bombus example, apex CiTO `RA1q6c0f…`), the constellation response carries:
 
-- ~18 unique nanopubs fetched
-- 3 chain-level CiTOs + 1 Research Synthesis + 1 apex CiTO Citation
-- 1 external DOI cited (the upstream paper)
-- Step-type breakdown: 3 × Quote (shared) / 3 × AIDA / 3 × Claim / 3 × Study / 3 × Outcome / 3 × CiTO / 3 × RS / 1 × Synthesis / 1 × apex CiTO
+- 3 chains, each with its Claim → Study → Outcome → CiTO steps inline
+- 1 Research Synthesis + 1 apex CiTO Citation
+- `paperDoi` set to the upstream paper's DOI
+- an Outcome `repository` per chain, feeding the infrastructure-inheritance step
 
-If the step-type breakdown the importer prints doesn't match what the user expects, the user should inspect `constellation.json` to see whether nodes were reachable but mis-classified (extend `STEP_TYPE_HINTS` in the script if so) or genuinely missing (re-run with a deeper `--depth`).
+If the constellation doesn't reach a step you expected (commonly the upstream AIDA / Quote — see the "upstream terminus" note in the skill), that's a property of the walk on the platform side, not something to re-derive locally: recover those URIs from the source chain's `PUBLISHED.md` and fetch them directly.
 
-## What the importer does NOT do
+## What this entry point does NOT do
 
-- **No SPARQL discovery.** The script walks links from the entry URI. To find chains the entry doesn't reference but are about the same paper, use the SPARQL discovery prototype mentioned in `project_nanopub_discovery.md` in the user's auto-memory.
 - **No automatic chain authoring.** The summary is read-only. Drafting the new chain's nanopubs is still the user's job, using the `nanopub-drafter` agent and the field-by-field structure in `docs/forrt-form-fields.md`.
-- **No signature verification.** The script trusts the nanopub network's HTTP resolver. For full cryptographic verification, use the `nanopub` PyPI package's `Nanopub.verify_signature()` method.
-- **No deduplication of trivially-equal nanopubs across signatures.** A Quote nanopub shared across three chains is fetched once (deduplication by URI) but if the chains used three separately-signed identical Quotes, those would appear as three nodes. This is fine — the chains are still walkable.
+- **No signature verification.** The constellation API and the TriG resolver are trusted at the HTTP layer. For full cryptographic verification, use the `nanopub` PyPI package's `Nanopub.verify_signature()` method.
+- **No claim-layer discovery in this repo.** Walking the citation graph and classifying step types lives on the platform (`science-live-platform/api/src/np/constellation.ts`), reached via the endpoint. The template deliberately does not keep a second, divergent copy of that walk.
 
 ## What gets committed to git, and what doesn't
 
@@ -93,7 +94,7 @@ Add the URI to `CITATION.cff`; let the cache live and die in `nanopubs/imported/
 
 1. **Claim layer**: walk the citation graph, summarise the FORRT chain steps (Quote → AIDA → Claim → Study → Outcome → CiTO + Synthesis), output a human-/AI-readable `CHAIN_SUMMARY.md`. This is the "what was published" axis.
 
-2. **Infrastructure layer**: discover the GitHub repositories underlying each prior chain (from `hasOutcomeRepository` triples in the Outcome / Research Software nanopubs — resolves GitHub URLs and Zenodo DOIs alike), `git clone` them as siblings of your current repo (default `../`), and stage reusable starter files into `_template_from_prior/`. This is the "what was built" axis — gives you a workspace that starts where the prior replication ended, not a blank one.
+2. **Infrastructure layer**: discover the GitHub repositories underlying each prior chain (from each Outcome step's `repository` value in the constellation — resolves GitHub URLs and Zenodo DOIs alike), `git clone` them as siblings of your current repo (default `../`), and stage reusable starter files into `_template_from_prior/`. This is the "what was built" axis — gives you a workspace that starts where the prior replication ended, not a blank one. Run by `scripts/inherit_sibling_repos.py`.
 
 The inherited files are deliberately staged to `_template_from_prior/` rather than the new repo's actual locations:
 
@@ -105,11 +106,10 @@ The inherited files are deliberately staged to `_template_from_prior/` rather th
 
 Each file gets a provenance header noting where it came from. The user reviews each and merges into the corresponding location in their own repo, then deletes `_template_from_prior/`. **The staging directory is one-shot reference, not durable repo state — don't commit it.**
 
-To disable cloning while still doing claim-layer import, pass `--no-clone-siblings`. To skip the whole infrastructure layer (pure claim-only import), pass `--no-inherit`.
+To stage from siblings already cloned under `../` without fetching anything, pass `--no-clone-siblings`. To skip the infrastructure layer entirely (pure claim-only import), simply don't run `scripts/inherit_sibling_repos.py` — the constellation cache and `CHAIN_SUMMARY.md` from the earlier steps stand on their own.
 
 ## Companion artefacts
 
-- `.claude/skills/import-from-nanopub/SKILL.md` — the orchestrating skill.
-- `scripts/import-nanopub-chain.py` — the BFS + parser script.
-- `scripts/queries/*.rq` — SPARQL queries (vendored from `science-live-platform/frontend/src/lib/queries/`).
+- `.claude/skills/import-from-nanopub/SKILL.md` — the orchestrating skill (calls `/np/constellation`, writes `CHAIN_SUMMARY.md`).
+- `scripts/inherit_sibling_repos.py` — the infrastructure-inheritance helper (reads the cached constellation, clones siblings, stages `_template_from_prior/`).
 - `nanopubs/imported/` — gitignored local cache (created on first run, regenerable on demand).
