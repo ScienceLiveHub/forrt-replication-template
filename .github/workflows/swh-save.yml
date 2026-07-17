@@ -33,7 +33,19 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true   # best-effort archival must never fail the release
     steps:
+      - uses: actions/checkout@v5
+
+      # Single source of truth — see .github/actions/check-ready. Software
+      # Heritage archival is PERMANENT and cannot be withdrawn, so an
+      # uninitialised or scaffold-state repo must never reach the save request:
+      # it would archive the {{...}} placeholder tree forever. On a release event
+      # the guard fails hard rather than skipping (see the action's Tripwire 1).
+      - name: Check repository readiness
+        id: guard
+        uses: ./.github/actions/check-ready
+
       - name: Request Software Heritage archival
+        if: steps.guard.outputs.ready == 'true'
         env:
           ORIGIN: https://github.com/${{ github.repository }}
         run: |

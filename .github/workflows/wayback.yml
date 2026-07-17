@@ -33,9 +33,19 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true   # best-effort archival must never fail the release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # Single source of truth — see .github/actions/check-ready. A Wayback
+      # snapshot is permanent, and an unready repo has no deployed Pages site to
+      # snapshot: submitting anyway captures a 404 forever under this release's
+      # timestamp. On a release event the guard fails hard rather than skipping
+      # (see the action's Tripwire 1).
+      - name: Check repository readiness
+        id: guard
+        uses: ./.github/actions/check-ready
 
       - name: Build URL list
+        if: steps.guard.outputs.ready == 'true'
         run: |
           repo="${{ github.repository }}"          # owner/name
           owner="${repo%%/*}"
@@ -50,6 +60,7 @@ jobs:
           echo "URLs to archive:"; cat /tmp/wayback-urls.txt
 
       - name: Submit to Wayback Machine (Save Page Now)
+        if: steps.guard.outputs.ready == 'true'
         run: |
           while IFS= read -r url; do
             [ -z "${url}" ] && continue

@@ -4,8 +4,13 @@ description: >-
   Returns ready=true once the template has been initialised (the
   .template-uninitialised sentinel is gone) and the notebooks are no longer
   scaffolds; otherwise ready=false with an explanatory ::notice::. Fails loudly
-  if the repo looks like a finished replication (real published nanopub URIs in
-  nanopubs/PUBLISHED.md) yet would still skip — the silent-green failure mode.
+  rather than skipping green in two cases — the silent-green failure mode:
+    1. The run is a release event. A release of an unready repo is always a bug,
+       and its archival (Zenodo / Software Heritage / Wayback) is permanent.
+    2. The repo looks like a finished replication (real published nanopub URIs
+       in nanopubs/PUBLISHED.md) yet would still skip.
+  Case 1 is independent of case 2 on purpose: Phase 4 (release) precedes Phase 5
+  (publish the chain), so PUBLISHED.md is legitimately empty at a first release.
 
 outputs:
   ready:
@@ -40,7 +45,20 @@ runs:
         if [ "$ready" = "false" ]; then
           echo "::notice::${reason} Skipping the pipeline steps for this run."
 
-          # Tripwire: a finished replication that still wants to skip is a bug,
+          # Tripwire 1 — release events. Cutting a release of an unready repo is
+          # always a bug: the release, its Zenodo deposit, and the Software
+          # Heritage / Wayback archival all happen regardless of what this guard
+          # decides, and they are permanent. This must fire independently of
+          # PUBLISHED.md, because CLAUDE.md orders Phase 4 (release) BEFORE
+          # Phase 5 (publish the chain) — so at a first release PUBLISHED.md is
+          # still empty by design and Tripwire 2 below is dormant at exactly the
+          # moment it is most needed.
+          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            echo "::error::${reason} BUT this is a release event — a release of an unready repository is always a bug. The release and its permanent archival (Zenodo, Software Heritage, Wayback) cannot be undone. Failing instead of skipping green; fix the sentinel/scaffold state above, then re-cut the release."
+            exit 1
+          fi
+
+          # Tripwire 2 — a finished replication that still wants to skip is a bug,
           # not an expected scaffold state. "Finished" = real published nanopub
           # URIs recorded in nanopubs/PUBLISHED.md (np/RA + >=10 id chars, so the
           # template's own "np/RA…" example placeholders do NOT match). This is
