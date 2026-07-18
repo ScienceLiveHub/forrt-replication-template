@@ -32,10 +32,21 @@
       "template_key": "AIDA_SENTENCE",
       "template_uri": "https://w3id.org/np/RALmXhDw3rHcMveTgbv8VtWxijUHwnSqhCmtJFIPKWVaA",
       "prefill": {
-        "aida": "Increased thermal exposure between historical baseline and recent climate predicts higher probability of local extirpation in Iberian Bombus populations."
+        "aida": "Increased thermal exposure between historical baseline and recent climate predicts higher probability of local extirpation in Iberian Bombus populations.",
+        "topic": [
+          {
+            "uri": "http://www.wikidata.org/entity/Q188872",
+            "label": "bumblebee"
+          },
+          {
+            "uri": "http://www.wikidata.org/entity/Q7942",
+            "label": "climate change"
+          }
+        ]
       },
       "provenance": {
-        "aida": "nanopubs/drafts/02_aida.md"
+        "aida": "nanopubs/drafts/02_aida.md",
+        "topic": "nanopubs/drafts/02_aida.md + Wikidata"
       },
       "manual": [
         "topic"
