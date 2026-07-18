@@ -2,6 +2,19 @@
 
 This document records the **exact form structure** of each Science Live nanopublication template, so drafts map 1:1 to the form. Don't draft against an imagined structure. Don't invent field names. Don't ship a draft that contains only the headline content (the AIDA sentence, the verbatim quote, the conclusion text) without the full field enumeration.
 
+> **This prose is a companion, not the source of truth. The templates are.**
+> Each Science Live template *is itself* a nanopublication whose typed placeholders
+> define the fields, their requiredness, their allowed values, and their character
+> caps. Those template URIs are pinned in [`../nanopubs/templates/registry.json`](../nanopubs/templates/registry.json);
+> the extracted field spec of every current template is committed at
+> [`../nanopubs/templates/fields.snapshot.json`](../nanopubs/templates/fields.snapshot.json);
+> and `scripts/check_template_drift.py` (scheduled, see `.github/workflows/template-drift.yml`)
+> fails when the live templates diverge from that snapshot. When it fails, a template
+> was superseded upstream — read the diff, fix the affected section **here** to match,
+> and commit the regenerated snapshot. This is how the transcription below is kept
+> honest instead of silently rotting (the "validation status is 3 options" / "comment
+> caps at 500" kind of drift). See [`../nanopubs/templates/README.md`](../nanopubs/templates/README.md).
+
 ## Pre-flight checklist — RUN THIS BEFORE EVERY NANOPUB DRAFT
 
 Before drafting *any* nanopub content for *any* template — Quote-with-comment, AIDA, FORRT Claim, FORRT Replication Study, FORRT Replication Outcome, CiTO Citation, Research Software, Research Synthesis, PCC Question, PICO Question:
@@ -21,7 +34,7 @@ This checklist exists because it is unreasonably easy to ship a partial draft th
 
 Form heading: *"Annotate a paper quotation — Annotating a paper quotation with personal interpretation"*
 
-> ⚠️ **500-character limit applies to BOTH the Quoted Text AND the Comment fields.** The Quoted Text limit is hard (the form enforces it in "Quote whole text" mode). The Comment limit is the discipline target — drafts that run over should be trimmed before publishing. If your verbatim quote is longer than 500 chars, switch the radio button to **Quote start/end** mode and use start-phrase + end-phrase to mark a longer span instead of pasting the whole text.
+> ⚠️ **Quoted Text caps at 500 characters; Comment caps at 800.** Both are hard limits enforced by the template (`nt:hasRegex` `{5,500}` on the quotation, `{5,800}` on the comment). Brevity is still the discipline for the comment — a tight *why this quote matters* beats an 800-char essay — but 500 is not its ceiling; 800 is. If your verbatim quote is longer than 500 chars, switch the radio button to **Quote start/end** mode and use start-phrase + end-phrase to mark a longer span instead of pasting the whole text.
 
 | Field label | Field type | Notes |
 |---|---|---|
@@ -29,7 +42,7 @@ Form heading: *"Annotate a paper quotation — Annotating a paper quotation with
 | Quote whole text (less than 500 characters) | radio button (default selected) | Mode for quoting a single short passage. The Quoted Text field below must be ≤ 500 chars. |
 | Quote start/end | radio button (alternative) | Alternative mode — two short text inputs for start phrase + end phrase, marking a longer span. Use when the quote is too long for whole-text mode. |
 | Quoted Text | textarea, **required** | The verbatim sentence(s) from the paper. ≤ 500 chars in "Quote whole text" mode. **Must be character-for-character verbatim — see `docs/verify-before-drafting.md`.** |
-| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Use this to explain why the quote matters and what the replication tests. **Target ≤ 500 chars** — same brevity discipline as the Quoted Text field. Long comments dilute the *why this quote matters* point and read as marketing rather than interpretation. |
+| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Use this to explain why the quote matters and what the replication tests. **Hard cap 800 chars** (template regex `{5,800}`); aim well under it — long comments dilute the *why this quote matters* point and read as marketing rather than interpretation. |
 
 Use this template for **paper-rooted chains** where you are testing or extending a sentence from someone else's paper. See `docs/chain-decision-tree.md`.
 

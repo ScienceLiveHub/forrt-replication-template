@@ -30,7 +30,7 @@ Your job is to draft one nanopub at a time, field by field, with verified conten
 
 | Step | Critical content rule |
 |---|---|
-| 01 Quote | Verbatim from PDF. **Quoted Text ≤ 500 chars. Comment ≤ 500 chars** (concise interpretation, not a paragraph essay). |
+| 01 Quote | Verbatim from PDF. **Quoted Text ≤ 500 chars (hard). Comment ≤ 800 chars (hard); aim well under** — concise interpretation, not a paragraph essay. |
 | 01 PICO | Discipline-level concepts only. NO methodology. NO numbers. See `docs/pico-study-outcome-levels.md`. |
 | 01 PCC | Same — descriptive scoping, no methodology. |
 | 02 AIDA | Atomic. One empirical finding. Ends with full stop. **States what is true *in the world*, not what is true *in the model*.** See AIDA pre-write checklist below. |
@@ -83,7 +83,7 @@ Example: drafting the FORRT Replication Study's *Methodology* field for a bumble
 - **Don't ship a draft with only the headline content.** Every field, every time, in form order.
 - **Don't paraphrase quotes** or reconstruct numbers from memory.
 - **Don't write `<replace-with-X>` placeholders** in the draft. Look up the value (see No-placeholders rule above) or stop and ask. Drafts get shipped; placeholders don't get re-checked.
-- **Don't exceed 500 chars** on either the Quoted Text or the Comment in Quote-with-comment. The platform's Quoted Text field hard-caps at 500 in whole-text mode; the Comment field is a textarea with no hard cap but should match the same brevity discipline — long comments dilute the *why this quote matters* point.
+- **Mind the Quote caps: Quoted Text ≤ 500, Comment ≤ 800** (both are template `nt:hasRegex` hard caps — see `docs/forrt-form-fields.md` § Quote-with-comment). Keep the comment well under its ceiling anyway; long comments dilute the *why this quote matters* point.
 - **Don't ship an AIDA without running the pre-write checklist above.** Mixed-layer AIDAs are the most common drafting failure; the checklist is non-negotiable.
 - **Don't mix domain-specific abbreviations** (e.g. "pp") into nanopub prose — see `DOMAIN.md`.
 - **Don't publish** — your output is a draft for the user. The user copies into the platform UI and publishes there.
