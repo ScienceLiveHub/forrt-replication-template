@@ -55,6 +55,24 @@ CARRY_FIELD = {
     "05_outcome": "study", "06_citation": "work",
 }
 
+# Short slug per step, for the "Short URI suffix" id fields (<org>-<repo>-<step>).
+STEP_SLUG = {
+    "01_quote": "quote", "01_pico": "pico", "01_pcc": "pcc", "02_aida": "aida",
+    "03_claim": "claim", "04_study": "study", "05_outcome": "outcome",
+    "06_citation": "citation", "07_research_software": "software", "08_synthesis": "synthesis",
+}
+
+# The CiTO citation type suggested from the Outcome's validation status. Keyed by
+# the validation-status vocabulary URI's final segment.
+CITO = "http://purl.org/spar/cito/"
+RELATION_FROM_STATUS = {
+    "Validated": CITO + "confirms",
+    "PartiallySupported": CITO + "qualifies",
+    "Contradicted": CITO + "disputes",
+    "Inconclusive": CITO + "discusses",
+    "NotTested": CITO + "cites",
+}
+
 
 # --- metadata (CITATION.cff) ---------------------------------------------
 
@@ -218,44 +236,89 @@ def _draft_clean(v: str) -> str | None:
     return v
 
 
+def _draft_sections(text: str) -> dict:
+    """heading (normalised) -> raw section body (lines until the next heading)."""
+    out: dict = {}
+    current = None
+    buf: list[str] = []
+    for line in text.splitlines():
+        h = _HEADING_RE.match(line)
+        if h:
+            if current is not None:
+                out[_norm(current)] = "\n".join(buf)
+            current, buf = h.group(1), []
+        else:
+            buf.append(line)
+    if current is not None:
+        out[_norm(current)] = "\n".join(buf)
+    return out
+
+
+def draft_choice(draft_text: str, field: dict) -> str | None:
+    """The vocabulary URI the agent checked for a restricted_choice field.
+
+    The draft records the choice as a ticked checkbox (``- [x] Label``). Match
+    that label against the field's ``possible_values`` by normalised label or by
+    the value URI's final segment — hand-authored drafts often use a short label
+    (``Replication Study``) where the template's is longer (``Replication Study -
+    replication with different …``)."""
+    body = _draft_sections(draft_text).get(_norm(field["label"]))
+    if body is None:
+        key = _norm(field["label"])
+        for hk, hv in _draft_sections(draft_text).items():
+            if hk and (hk in key or key in hk):
+                body = hv
+                break
+    if not body:
+        return None
+    m = re.search(r"^\s*[-*]\s*\[[xX]\]\s*(.+?)\s*$", body, re.M)
+    if not m:
+        return None
+    checked = _norm(m.group(1))
+    for c in field.get("possible_values", []):
+        label = _norm(c["label"])
+        seg = _norm(re.sub(r"[-_]", " ", c["uri"].rsplit("/", 1)[-1]))
+        if checked in (label, seg) or label.startswith(checked) or seg == checked:
+            return c["uri"]
+    return None
+
+
+def slug_for(step: str, org: str | None, repo: str | None) -> str | None:
+    ident = [p for p in (org, repo) if p]
+    if not ident:                       # no repo identity (uninitialised template)
+        return None
+    s = re.sub(r"[^a-z0-9-]+", "-", "-".join([*ident, STEP_SLUG[step]]).lower()).strip("-")
+    return s or None
+
+
 # --- assembly ------------------------------------------------------------
+
+def is_metadata_field(step: str, name: str) -> bool:
+    """Whether a field is filled from CITATION.cff (structurally — independent of
+    whether the value is present in this repo)."""
+    if name in ("paper", "source", "cited", "repo", "date"):
+        return True
+    return step == "07_research_software" and name in ("software", "repository")
+
 
 def is_content_field(step: str, idx: int, f: dict) -> bool:
     """Content = drafted prose. Literals and the AIDA sentence are always content;
-    a bare ``uri`` field is content only when it's the step's id slug (first
-    field) and not itself metadata. Optional topic/keyword/dataset URIs are left
-    for the user (omitted)."""
+    a bare ``uri`` field is content only when it's the step's id slug (the first
+    field) and not itself a metadata field. Optional topic/keyword/dataset URIs
+    are left for the user (omitted)."""
     if f["kind"] in ("literal", "long_literal", "auto_escape_uri"):
         return True
     if f["kind"] == "uri":
-        return idx == 0 and metadata_value(step, f["id"], {}) is None
+        return idx == 0 and not is_metadata_field(step, f["id"])
     return False
 
 
-def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
-               draft_text: str | None, published_uri: str | None) -> dict:
-    prefill: dict = {}
-    provenance: dict = {}
-    manual: list[str] = []
+def _org_repo(repository: str) -> tuple[str | None, str | None]:
+    m = re.search(r"github\.com[:/]+([^/]+)/([^/]+?)(?:\.git)?/?$", repository or "")
+    return (m.group(1), m.group(2)) if m else (None, None)
 
-    for idx, f in enumerate(spec["fields"]):
-        name = f["id"]
-        if CARRY_FIELD.get(step) == name:
-            continue                                   # wizard fills from prior URI
-        if f["kind"] == "restricted_choice":
-            manual.append(name)
-            continue
-        mv = metadata_value(step, name, cff)
-        if mv is not None:
-            prefill[name] = mv
-            provenance[name] = "CITATION.cff"
-            continue
-        if draft_text and is_content_field(step, idx, f):
-            val = draft_content(draft_text, f)
-            if val is not None:
-                prefill[name] = val
-                provenance[name] = f"nanopubs/drafts/{step}.md"
 
+def _finish(step, registry_meta, prefill, provenance, manual, published_uri) -> dict:
     out = {
         "step": step,
         "template_key": registry_meta["key"],
@@ -268,6 +331,60 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
         out["manual"] = manual
     out["published_uri"] = published_uri
     return out
+
+
+def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
+               draft_text: str | None, published_uri: str | None, *,
+               org: str | None = None, repo: str | None = None,
+               cito_relation: str | None = None) -> dict:
+    prefill: dict = {}
+    provenance: dict = {}
+    manual: list[str] = []
+
+    # The CiTO citation is a REQUIRED repeatable group. Its form field is `st02`,
+    # an array of {cites, cited} — not flat cites/cited (see the component audit in
+    # docs/chain-draft-contract.md). Prepare one row: the relation suggested from
+    # the Outcome's validation status, cited = the replicated paper.
+    if step == "06_citation":
+        row: dict = {}
+        if cito_relation:
+            row["cites"] = cito_relation
+        paper = metadata_value(step, "cited", cff)
+        if paper:
+            row["cited"] = paper
+        if row:
+            prefill["st02"] = [row]
+            provenance["st02"] = ("cites = validation status (see 05_outcome); "
+                                  "cited = CITATION.cff references[article]")
+        return _finish(step, registry_meta, prefill, provenance, manual, published_uri)
+
+    for idx, f in enumerate(spec["fields"]):
+        name = f["id"]
+        if CARRY_FIELD.get(step) == name:
+            continue                                   # wizard fills from prior URI
+        if f["kind"] == "restricted_choice":
+            manual.append(name)                        # flag: agent's call, confirm it
+            choice = draft_choice(draft_text, f) if draft_text else None
+            if choice is not None:
+                prefill[name] = choice                 # ...but pre-fill the recorded choice
+                provenance[name] = f"nanopubs/drafts/{step}.md"
+            continue
+        mv = metadata_value(step, name, cff)
+        if mv is not None:
+            prefill[name] = mv
+            provenance[name] = "CITATION.cff"
+            continue
+        if is_content_field(step, idx, f):
+            val = draft_content(draft_text, f) if draft_text else None
+            prov = f"nanopubs/drafts/{step}.md"
+            if val is None and idx == 0 and f["kind"] == "uri":   # the id slug
+                val = slug_for(step, org, repo)
+                prov = "derived (<org>-<repo>-<step>)"
+            if val is not None:
+                prefill[name] = val
+                provenance[name] = prov
+
+    return _finish(step, registry_meta, prefill, provenance, manual, published_uri)
 
 
 def detect_anchor(drafts_dir: Path) -> str:
@@ -296,16 +413,25 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str) -> dict:
         if p.exists() and draft_has_content(p.read_text(), snapshot.get(opt, {})):
             step_ids.append(opt)
 
+    org, repo = _org_repo(repository)
     steps = []
+    outcome_status: str | None = None
     for step in step_ids:
         if step not in snapshot:
             continue
         dp = drafts_dir / f"{step}.md"
-        steps.append(build_step(
+        # The citation type is suggested from the Outcome's validation status.
+        relation = None
+        if step == "06_citation" and outcome_status:
+            relation = RELATION_FROM_STATUS.get(outcome_status.rsplit("/", 1)[-1])
+        st = build_step(
             step, snapshot[step], registry["steps"][step], cff,
-            dp.read_text() if dp.exists() else None,
-            published.get(step[:2]),
-        ))
+            dp.read_text() if dp.exists() else None, published.get(step[:2]),
+            org=org, repo=repo, cito_relation=relation,
+        )
+        if step == "05_outcome":
+            outcome_status = st["prefill"].get("validationStatus")
+        steps.append(st)
 
     carry = [{"from": a, "into": b, "field": CARRY_FIELD[b]}
              for a, b in zip(step_ids, step_ids[1:]) if b in CARRY_FIELD]

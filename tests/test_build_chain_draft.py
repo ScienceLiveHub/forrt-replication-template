@@ -90,6 +90,8 @@ Iberian Bombus thermal-exposure outcome
 ```
 ### choose validation status
 - [ ] validated
+- [x] contradicted
+- [ ] inconclusive
 ### describe the overall conclusion about the original claim
 ```
 The thermal-exposure signal holds on the equal-area grid.
@@ -99,10 +101,35 @@ The thermal-exposure signal holds on the equal-area grid.
 GLMM coefficient +0.454 (95% HDI [+0.130, +0.751]).
 ```
 ### choose confidence level
+- [x] high
+- [ ] low
 ### describe what limits the conclusions of the study
 ```
 Single taxon and region.
 ```
+"""
+
+CLAIM = """\
+# 03 — Claim
+### label of the claim, to find it later
+```
+Thermal exposure predicts Iberian Bombus extirpation
+```
+### Type of FORRT claim
+- [ ] statistical significance
+- [x] descriptive pattern
+- [ ] model performance
+"""
+
+STUDY = """\
+# 04 — Study
+### label/name of replication study
+```
+Iberian Bombus thermal-exposure replication
+```
+### choose the study type
+- [ ] Reproduction Study
+- [x] Replication Study
 """
 
 
@@ -115,8 +142,10 @@ def _fixture_repo(tmp_path: Path) -> Path:
     (root / "CITATION.cff").write_text(CITATION)
     (root / "nanopubs" / "PUBLISHED.md").write_text(PUBLISHED)
     (root / "nanopubs" / "drafts" / "01_quote.md").write_text(QUOTE)
+    (root / "nanopubs" / "drafts" / "03_claim.md").write_text(CLAIM)
+    (root / "nanopubs" / "drafts" / "04_study.md").write_text(STUDY)
     (root / "nanopubs" / "drafts" / "05_outcome.md").write_text(OUTCOME)
-    for s in ("02_aida", "03_claim", "04_study", "06_citation"):
+    for s in ("02_aida", "06_citation"):
         (root / "nanopubs" / "drafts" / f"{s}.md").write_text(f"# {s}\n")
     return root
 
@@ -156,7 +185,7 @@ def test_carry_forward_edges_match_the_contract(draft):
 def test_paper_doi_is_bare_on_quote_full_url_elsewhere(draft):
     assert _step(draft, "01_quote")["prefill"]["paper"] == "10.1126/science.aax8591"
     assert _step(draft, "03_claim")["prefill"]["source"] == "https://doi.org/10.1126/science.aax8591"
-    assert _step(draft, "06_citation")["prefill"]["cited"] == "https://doi.org/10.1126/science.aax8591"
+    # 06_citation's DOI lives in the st02 repeatable row, not a flat key (below).
 
 
 def test_outcome_uses_version_doi_and_release_date(draft):
@@ -192,14 +221,41 @@ def test_provenance_is_recorded(draft):
     assert prov["conclusion"] == "nanopubs/drafts/05_outcome.md"
 
 
-# --- manual + carry: not pre-filled --------------------------------------
+# --- judgment fields: the agent's recorded choice, pre-filled + flagged --
 
-def test_restricted_choice_fields_are_manual_not_prefilled(draft):
+def test_judgment_fields_prefilled_from_draft_choice_and_flagged(draft):
+    """The agent ticked one option per judgment field in the draft; that choice
+    is pre-filled (overriding the form default) AND kept in `manual` so the wizard
+    shows 'confirm', not left blank."""
     out = _step(draft, "05_outcome")
+    assert out["prefill"]["validationStatus"].endswith("Contradicted")
+    assert out["prefill"]["confidenceLevel"].endswith("HighConfidence")
     assert set(out["manual"]) == {"validationStatus", "confidenceLevel"}
-    assert "validationStatus" not in out["prefill"]
-    assert _step(draft, "03_claim")["manual"] == ["forrtType"]
-    assert _step(draft, "06_citation")["manual"] == ["cites"]
+    claim = _step(draft, "03_claim")
+    assert claim["prefill"]["forrtType"].endswith("descriptive_pattern-FORRT-Claim")
+    assert claim["manual"] == ["forrtType"]
+    assert _step(draft, "04_study")["prefill"]["type"].endswith("Replication-Study")
+
+
+# --- repeatable CiTO citation --------------------------------------------
+
+def test_citation_is_a_prepared_st02_row(draft):
+    """CiTO is the repeatable `st02` array, not flat cites/cited; one row is
+    prepared with the relation derived from the validation status."""
+    cite = _step(draft, "06_citation")["prefill"]
+    assert "cited" not in cite and "cites" not in cite      # not flat
+    row = cite["st02"][0]
+    assert row["cited"] == "https://doi.org/10.1126/science.aax8591"
+    assert row["cites"] == "http://purl.org/spar/cito/disputes"   # Contradicted -> disputes
+    assert _step(draft, "06_citation").get("manual", []) == []
+
+
+# --- generated id slug ---------------------------------------------------
+
+def test_id_slug_is_generated_from_org_repo_step(draft):
+    """Steps whose draft has no URI-suffix slug get <org>-<repo>-<step>."""
+    assert _step(draft, "03_claim")["prefill"]["claim"] == "annefou-bombus-thermal-replication-claim"
+    assert _step(draft, "04_study")["prefill"]["study"] == "annefou-bombus-thermal-replication-study"
 
 
 def test_carry_fields_are_absent_from_prefill(draft):

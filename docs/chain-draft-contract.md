@@ -87,6 +87,46 @@ or `01_pcc` (`PCC_RESEARCH_QUESTION`); the optional `07_research_software`
 (`RESEARCH_SOFTWARE`) and `08_synthesis` (`RESEARCH_SYNTHESIS`) steps append when
 applicable.
 
+## Repeatable and complex fields — array-shaped, form-field names
+
+A few template fields are **repeatable groups** (an "add another" list) or custom
+widgets, and for these the component's form-field name is **not** the template
+placeholder name and the value is **not** a flat string. `prefill` must use the
+form-field name and the exact shape below (verified against the platform's
+`create/components/templates/*.tsx`). The producer hard-codes these; the wizard
+stays a pass-through.
+
+| Step | Form field (prefill key) | Shape | Notes |
+|---|---|---|---|
+| `06_citation` | `st02` | `[{ cites, cited }]` | **required ≥1.** `cites` = a CiTO relation URI, `cited` = the cited work. This replaces flat `cites`/`cited`. |
+| `08_synthesis` | `sources` | `[{ source }]` | required ≥1 |
+| `08_synthesis` | `topicSelection` | `[{ uri, label }]` | required ≥1 |
+| `02_aida` | `st3` / `st4` | `[{ dataset }]` / `[{ publication }]` | optional |
+| `02_aida` | `topic` | `[{ uri, label }]` | optional |
+| `04_study` | `keywordSelection` | `[{ uri, label }]` | optional |
+| `04_study` | `disciplineSelection` | `{ uri, label }` | optional — a single object, **not** an array |
+| `07_research_software` | `datasets` / `researchOutputs` | `["url", …]` | optional — plain-string arrays |
+
+Two runtime notes for the wizard: **date** fields (`05_outcome.date`,
+`08_synthesis.date`) want a JS `Date` — the wizard converts a `YYYY-MM-DD` prefill
+string to a `Date` before passing it on; and the `minItems: 1` groups above must
+always carry at least one entry or the form won't submit.
+
+## Judgment fields are pre-filled, not left blank
+
+The `restricted_choice` dropdowns (claim type, study type, validation status,
+confidence, CiTO relation) are **decisions the agent already made during the
+replication**, recorded in the drafts — not things to leave to a form default
+(which can be wrong). The producer reads the agent's ticked option from the draft
+and puts it in `prefill` as an editable suggestion, **and** keeps the field in
+`manual` so the wizard flags it "confirm" rather than "you choose". The CiTO
+relation is derived from the validation status (Validated→`confirms`,
+PartiallySupported→`qualifies`, Contradicted→`disputes`, …).
+
+The **URI-suffix id** of each step (`claim`, `study`, `outcome`, …), if the draft
+gives none, is suggested as `<org>-<repo>-<step>` (from `CITATION.cff`'s
+`repository-code`), editable.
+
 ## Carry-forward topology
 
 Each step's published URI fills one field of the next step. These edges are fixed
