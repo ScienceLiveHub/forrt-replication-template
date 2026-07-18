@@ -4,47 +4,48 @@
 
 **Description:** *"Declare citations between papers or other works, using Citation Typing Ontology"*
 
-## Field-by-field draft
+## Fields
 
-### Identifier for the citing creative work (text input, required)
+<!-- FIELDS:GENERATED step=06_citation — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Declare citations with CiTO  
+**Template URI:** https://w3id.org/np/RA43F9EoOuzF0xoNUnCMNyFsfIqlsuWDdPHCnN0wCdCAw  
+*3 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-URI of the Outcome published in step 05. Pull from `nanopubs/PUBLISHED.md`.
+### 1. DOI (https://doi.org/10...) or other URL of the citing article
 
-```
-
-```
-
-### List citations (repeatable group, required ≥1)
-
-#### Citation 1 — back to the original paper
-
-##### Citation Type (dropdown)
-
-Choose based on the Outcome's validation status:
-
-- Validated → `confirms`
-- PartiallySupported → `qualifies`
-- Contradicted → `disputes`
-
-For question-rooted chains where there is no original paper to confirm/dispute, use `usesMethodIn` or `citesAsAuthority` for the methodology paper(s).
-
-> **Note:** `replicates` is NOT in the Science Live dropdown (despite existing in upstream CiTO). When citing a notebook/tutorial that was directly reused, use **`credits`** instead.
+*URL or DOI · required*
 
 ```
 
 ```
 
-##### DOI or other URL of the cited work (text input)
+### 2. select the citation type
+
+*choice · required · repeatable*
+
+Choose one of 43 values from the controlled vocabulary (see https://w3id.org/np/RAZt5kzfoJg2m4dMRdMm2SP6JeUDD_GMzSq9xyRPMgP5k). See the field notes below for the FORRT-relevant subset.
+
+### 3. DOI (https://doi.org/10...) or other URL of the cited article
+
+*URL or DOI · required · repeatable*
 
 ```
-https://doi.org/{{PAPER_DOI}}
+
 ```
+<!-- /FIELDS:GENERATED -->
 
-#### Additional citations (optional)
+## Field notes
 
-If the Outcome cites methods papers, related replications, or upstream tools, add them here.
+Guidance the template can't carry.
 
-- _Type: ___ → URL: ___
+- **citing creative work** — the URI of the Outcome published in step 05. Pull from `nanopubs/PUBLISHED.md`.
+- **citation type** — the generated block lists the full CiTO vocabulary (40+ relations). For FORRT chains, choose from the Outcome's validation status:
+  - validated → **`confirms`**
+  - partially supported → **`qualifies`**
+  - contradicted → **`disputes`**
+  - question-rooted chains with no original paper to confirm/dispute → **`usesMethodIn`** or **`citesAsAuthority`** for the methodology paper(s).
+  > `replicates` is NOT in the Science Live vocabulary (despite existing in upstream CiTO). When citing a notebook/tutorial that was directly reused, use **`credits`** instead.
+- **cited work** — the citation relation + cited work is a **repeatable** group: citation 1 is the back-link to the original paper (default `https://doi.org/{{PAPER_DOI}}`); add more for methods papers, related replications, or upstream tools.
 
 ## Publication note
 

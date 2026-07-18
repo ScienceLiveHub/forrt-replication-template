@@ -6,75 +6,97 @@
 
 **Form heading:** *"Science Live Research Synthesis — Synthesise findings across multiple replication outcomes with conclusions, recommendations, conditions, and limitations."*
 
-## Field-by-field draft
+## Fields
 
-### Short URI suffix for synthesis ID (text input, required)
+<!-- FIELDS:GENERATED step=08_synthesis — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Science Live Research Synthesis  
+**Template URI:** https://w3id.org/np/RApmrqOEr4f5bJC2vayrTnzhwnuEfAU_I4Pdg8K5JxeBw  
+*9 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Slug. Use kebab-case.
+### 1. short URI suffix for outcome ID
 
-```
-
-```
-
-### Label of the synthesis (text input, required)
-
-A one-line summary.
+*URI · required*
 
 ```
 
 ```
 
-### Conclusion of the synthesis (textarea, required)
+### 2. label
 
-The aggregate finding across the underlying outcomes.
-
-```
-
-```
-
-### Recommendations (textarea, required)
-
-Actionable guidance for practitioners.
+*text · required*
 
 ```
 
 ```
 
-### Conditions under which the synthesis applies (textarea, required)
+### 3. Conclusion of the synthesis
 
-Scope: data types, methods, domains, regions, time periods.
-
-```
-
-```
-
-### Limitations of the synthesis (textarea, required)
-
-What was not tested? What might not generalise?
+*text (long) · required*
 
 ```
 
 ```
 
-### Completion date (date picker, required)
+### 4. Recommendations
+
+*text (long) · required*
 
 ```
-{{RELEASE_DATE}}
+
 ```
 
-### Supporting sources (repeatable group, required ≥1)
+### 5. Conditions of the synthesis
 
-Each entry is a URL — typically the FORRT Outcome URIs being synthesised. Pull from `nanopubs/PUBLISHED.md` (and/or registries from sibling repos).
+*text (long) · required*
 
-- _Source URL 1 (Outcome from this chain): ___
-- _Source URL 2 (Outcome from a sibling chain): ___
-- _Source URL 3 (Research Software nanopub if applicable): ___
+```
 
-### Search topics (Wikidata) (multi-select, optional)
+```
 
-Provide labels (not QIDs).
+### 6. Limitations of the synthesis
 
-- _Label 1: ___
+*text (long) · required*
+
+```
+
+```
+
+### 7. URI of the source supporting the synthesis
+
+*URI · required · repeatable*
+
+```
+
+```
+
+### 8. 
+
+*text · required*
+
+```
+
+```
+
+### 9. topic
+
+*search / select · required · repeatable*
+
+_Search / select in the UI; type to filter._
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- **Short URI suffix / label** — the suffix becomes part of the nanopub URI (kebab-case slug); the label is a one-line summary.
+- **conclusion / recommendations / conditions / limitations** — the aggregate finding across the underlying outcomes; actionable practitioner guidance; the scope it applies under (data types, methods, domains, regions, time periods); and what was not tested / might not generalise.
+- **completion date** — default `{{RELEASE_DATE}}`.
+- **supporting sources** — a **repeatable** group, ≥1 required. Each entry is a URL, typically the FORRT Outcome URIs being synthesised (this chain's Outcome, sibling-chain Outcomes, and a Research Software nanopub if applicable). Pull from `nanopubs/PUBLISHED.md` and/or sibling-repo registries.
+- **topic** (Wikidata) — provide labels (not QIDs).
 
 ## Publication note
 

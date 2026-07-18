@@ -36,6 +36,7 @@ from rdflib import RDF, RDFS, Dataset, Graph, Namespace
 from rdflib.term import Literal, URIRef
 
 NT = Namespace("https://w3id.org/np/o/ntemplate/")
+NP = Namespace("http://www.nanopub.org/nschema#")
 
 # Placeholder rdf:type → the `kind` we report, in priority order (a node can
 # carry several types at once, e.g. IntroducedResource + LocalResource +
@@ -131,12 +132,51 @@ def _statement_order_key(name: str) -> tuple:
         return (1, (0,), name)
 
 
-def _build_field(graph, term, template_uri, *, required, repeatable, predicate) -> Field:
+def _flatten(trig_text: str) -> tuple[Dataset, Graph]:
+    """Parse TriG into a Dataset (context-aware, needed for named graphs) and a
+    flattened plain Graph. Querying the plain Graph keeps every triple in view
+    without touching rdflib's deprecated union-context path."""
+    dataset = Dataset()
+    dataset.parse(data=trig_text, format="trig")
+    graph = Graph()
+    for ctx in dataset.graphs():
+        graph += ctx
+    return dataset, graph
+
+
+def parse_value_list(trig_text: str, list_uri: str) -> list[Choice]:
+    """Expand a `possibleValuesFrom` value-list nanopub into its choices.
+
+    Such a nanopub's assertion graph is a flat set of `<value> rdfs:label "…"`
+    triples (e.g. the full CiTO relation vocabulary). Read only the assertion
+    graph so the pubinfo's own labels ("Template: …") don't leak in."""
+    dataset, _ = _flatten(trig_text)
+    this = URIRef(list_uri)
+    assertion_refs = {o for ctx in dataset.graphs()
+                      for o in ctx.objects(this, NP.hasAssertion)}
+    choices: list[Choice] = []
+    for ref in assertion_refs:
+        for s, o in dataset.graph(ref).subject_objects(RDFS.label):
+            if isinstance(s, URIRef) and isinstance(o, Literal):
+                choices.append(Choice(uri=str(s), label=str(o)))
+    choices.sort(key=lambda c: c.uri)
+    return choices
+
+
+def _build_field(graph, term, template_uri, *, required, repeatable, predicate,
+                 resolve=None) -> Field:
     kind = _placeholder_kind(graph, term)
     values: list[Choice] = []
+    values_from = _all(graph, term, NT.possibleValuesFrom)
     if kind == "restricted_choice":
         for v in graph.objects(term, NT.possibleValue):
             values.append(Choice(uri=str(v), label=_label(graph, v)))
+        # Inline values are absent when the choices live in a separate value-list
+        # nanopub (possibleValuesFrom). Expand it if a resolver was supplied;
+        # without one the pointer alone is recorded (keeps the parser offline).
+        if not values and values_from and resolve is not None:
+            for vf in values_from:
+                values.extend(parse_value_list(resolve(vf), vf))
         values.sort(key=lambda c: c.uri)  # deterministic snapshot order
     return Field(
         id=_local(term, template_uri),
@@ -146,7 +186,7 @@ def _build_field(graph, term, template_uri, *, required, repeatable, predicate) 
         repeatable=repeatable,
         predicate=predicate,
         possible_values=values,
-        values_from=_all(graph, term, NT.possibleValuesFrom),
+        values_from=values_from,
         values_from_api=_all(graph, term, NT.possibleValuesFromApi),
         regex=_first(graph, term, NT.hasRegex),
         prefix=_first(graph, term, NT.hasPrefix),
@@ -154,22 +194,18 @@ def _build_field(graph, term, template_uri, *, required, repeatable, predicate) 
     )
 
 
-def parse_template(trig_text: str, template_uri: str) -> TemplateSpec:
+def parse_template(trig_text: str, template_uri: str, *, resolve=None) -> TemplateSpec:
     """Parse a template nanopub's TriG into an ordered `TemplateSpec`.
 
     `template_uri` is the nanopub's own URI (the `this:` subject), used to
     resolve `sub:`-relative placeholder names to short ids.
+
+    `resolve`, if given, is `Callable[[str], str]` mapping a value-list nanopub
+    URI to its TriG text; it expands `possibleValuesFrom` choices (e.g. the CiTO
+    relations). Omit it to keep the parse fully offline — the pointer is then
+    recorded but not expanded.
     """
-    # TriG parsing needs a context-aware store, so parse into a Dataset, then
-    # flatten every named graph into one plain Graph. Querying the plain Graph
-    # keeps all triples in view (the template's field labels and value labels
-    # live in the assertion graph) without touching rdflib's deprecated
-    # union-context query path.
-    dataset = Dataset()
-    dataset.parse(data=trig_text, format="trig")
-    graph = Graph()
-    for ctx in dataset.graphs():
-        graph += ctx
+    _, graph = _flatten(trig_text)
 
     tmpl_nodes = sorted(graph.subjects(RDF.type, NT.AssertionTemplate), key=str)
     if not tmpl_nodes:
@@ -207,6 +243,7 @@ def parse_template(trig_text: str, template_uri: str) -> TemplateSpec:
             fields.append(_build_field(
                 graph, term, template_uri,
                 required=required, repeatable=repeatable, predicate=pred_str,
+                resolve=resolve,
             ))
 
     return TemplateSpec(

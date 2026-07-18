@@ -73,10 +73,29 @@ divergence nobody notices. To resolve:
    move it into `registry.json` `superseded`; update `current` to the new URI.
 5. Commit the regenerated snapshot and the reconciled docs together.
 
+## Generating the draft skeletons
+
+The extracted field spec also drives the `nanopubs/drafts/` skeletons. Each
+draft carries its field enumeration inside `<!-- FIELDS:GENERATED step=… -->`
+markers; `scripts/generate_draft_skeletons.py` rewrites only that region from
+`fields.snapshot.json`, leaving the hand-written guidance around it untouched.
+
+```bash
+pixi run -e tests gen-drafts           # rewrite the generated regions
+pixi run -e tests gen-drafts --check   # exit 1 if any region is stale
+```
+
+`--check` is offline and enforced by `tests/test_draft_skeletons.py` in the
+ordinary test job, so a draft's field list can no longer drift from the
+template. When the snapshot changes, re-run `gen-drafts` and commit.
+
+Choice fields that draw from a value-list nanopub (`possibleValuesFrom`, e.g.
+the CiTO relation vocabulary) are resolved into the snapshot at `--update` time
+(the extractor takes an injectable resolver, so the parse itself stays offline).
+
 ## What this does not do
 
-It pins the **field structure** of the standard FORRT chain templates. It does
-not resolve `possibleValuesFrom` value-list nanopubs (e.g. the CiTO relation
-vocabulary — it records the pointer, not the expanded list), and it does not
-generate the draft skeletons in `nanopubs/drafts/` from the templates. Both are
-natural follow-ups now that the extractor exists.
+It pins the **field structure** of the standard FORRT chain templates and
+generates the draft field lists from it. It does not fill in field *values*
+(that is the `nanopub-drafter` agent's job) and it does not manage the
+hand-written guidance in the drafts' "Field notes" sections.

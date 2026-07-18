@@ -4,53 +4,68 @@
 
 **Form heading:** *"FORRT Claim — Declare an original claim according to FORRT, linking it to an AIDA sentence with a specific FORRT type."*
 
-## Field-by-field draft
+## Fields
 
-### Short URI suffix as claim ID (text input, required)
+<!-- FIELDS:GENERATED step=03_claim — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Declaring an original claim according to FORRT  
+**Template URI:** https://w3id.org/np/RAZWyM8D16ya3S1zhCvrG1f0iSpd9-8onVWp0FTvvX7LQ  
+*5 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Slug becomes part of the nanopub URI. Use kebab-case.
+### 1. Short URI suffix as claim ID
 
-```
-
-```
-
-### Label of the claim (text input, required)
-
-A descriptive title (not a sentence). Used for searches/discovery.
+*URI · required*
 
 ```
 
 ```
 
-### Search for an AIDA sentence (search/select, required)
+### 2. label of the claim, to find it later
 
-URI of the AIDA published in step 02. Pull from `nanopubs/PUBLISHED.md`.
-
-> _If the AIDA was published via Nanodash (`w3id.org/np/...` namespace), the platform's search may not find it — paste the URI manually._
+*text · required*
 
 ```
 
 ```
 
-### Type of FORRT claim (dropdown, required)
+### 3. choose AIDA sentence of claim
 
-Pick one. See `docs/claim-type-vocabulary.md` for the seven options and how to choose.
+*search / select · required*
 
-- [ ] computational performance
-- [ ] scalability
-- [ ] data quality
-- [ ] data governance
-- [ ] descriptive pattern
-- [ ] model performance
-- [ ] statistical significance
-
-### Source URI (text input, optional)
-
-Full URL form: `https://doi.org/...` (NOT bare DOI).
+_Search / select in the UI; type to filter._
 
 ```
-https://doi.org/{{PAPER_DOI}}
+
 ```
+
+### 4. Type of FORRT claim
+
+*choice · required*
+
+- [ ] computational performance (Computational & Performance)
+- [ ] data governance (access control, licensing, FAIR compliance)
+- [ ] data quality (preprocessing, validation, normalization)
+- [ ] descriptive pattern (distribution, trend, proportion)
+- [ ] model performance (accuracy, F1 score, evaluation metrics)
+- [ ] scalability (Computational & Performance)
+- [ ] statistical significance (significant difference, relationship, or effect)
+
+### 5. source URI
+
+*URL or DOI · optional*
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- **Short URI suffix / label** — the suffix becomes part of the nanopub URI (kebab-case slug); the label is a descriptive title, not a sentence, used for search/discovery.
+- **AIDA sentence** — the URI of the AIDA published in step 02. Pull from `nanopubs/PUBLISHED.md`. If it was published via Nanodash (`w3id.org/np/…` namespace), the platform search may not find it — paste the URI manually.
+- **Type of FORRT claim** — pick exactly one of the seven. See `docs/claim-type-vocabulary.md` for what each means and how to choose.
+- **Source URI** (optional) — the original paper, in full `https://doi.org/…` form (**not** the bare DOI). Default: `https://doi.org/{{PAPER_DOI}}`.
 
 ## Publication note
 

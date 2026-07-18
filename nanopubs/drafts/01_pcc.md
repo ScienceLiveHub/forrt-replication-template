@@ -11,55 +11,69 @@
 
 **Form heading:** *"PCC Research Question — Define a review question using the PCC framework (Population, Concept, Context)"*
 
-## Field-by-field draft
+## Fields
 
-### Short ID (text input, required)
+<!-- FIELDS:GENERATED step=01_pcc — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Defining a PCC-based research question  
+**Template URI:** https://w3id.org/np/RAmR-xqMgOq3oTJmOVDQFL2p5usID6zqRapizHy0UJb04  
+*6 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Slug becomes part of the nanopub URI. Use kebab-case.
+### 1. short ID used as URI suffix
 
-```
-
-```
-
-### Review Question Label (text input, required)
-
-A short label for searches/discovery.
+*URI · required*
 
 ```
 
 ```
 
-### Review Question Description (textarea, required)
+### 2. label for the review question
 
-Describe the review question in detail; commentary on why it matters.
-
-```
-
-```
-
-### Population (textarea, required)
-
-The population or participants being studied.
+*text · required*
 
 ```
 
 ```
 
-### Concept (textarea, required)
+### 3. description of the review question
 
-The core concept or phenomenon being examined.
+*text (long) · required*
+
+```
+
+```
+
+### 4. description of the population
+
+*text (long) · required*
 
 ```
 
 ```
 
-### Context (textarea, required)
+### 5. description of the concept
 
-The context or setting in which the review is conducted.
+*text (long) · required*
+
+```
+
+```
+
+### 6. description of the context
+
+*text (long) · required*
 
 ```
 
 ```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- PCC is the **review question** at discipline level: the **Population** or participants, the core **Concept** or phenomenon examined, and the **Context** or setting. Keep implementation specifics out — those belong in the Replication Study. See `docs/pico-study-outcome-levels.md`.
+- The description field is where the *why it matters* commentary goes.
+- Short-ID fields become part of the nanopub URI — use a kebab-case slug.
 
 ## Publication note
 

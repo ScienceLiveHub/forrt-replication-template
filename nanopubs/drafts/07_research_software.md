@@ -6,84 +6,83 @@
 
 **Form heading:** *"Research Software — Describe research software with metadata including repository, supporting publications, and related resources."*
 
-## Field-by-field draft
+## Fields
 
-### URI of published software (text input, required)
+<!-- FIELDS:GENERATED step=07_research_software — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Describing research software at summary level - simple  
+**Template URI:** https://w3id.org/np/RABBzVTxosLGT4YBCfdfNd6LyuOOTe2EVOTtWJMyOoZHk  
+*7 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Use the Zenodo **version DOI** URL — `https://doi.org/10.5281/zenodo.<N>` for the
-specific release, NOT the concept DOI. Full URL form. Fall back to a GitHub URL
-only if there is no Zenodo deposit at all.
+### 1. URI of published software
 
-> **Why the version DOI, not the concept DOI.** A concept DOI resolves to
-> whatever version is *latest*. This nanopub is signed and immutable — once
-> published it can only be retracted or superseded, never edited. If it names a
-> concept DOI, then the moment a v0.2.0 is released this permanent record
-> silently starts describing different code, with no signature breakage and
-> nothing to alert a reader. The version DOI pins the snapshot that actually
-> exists behind this assertion.
->
-> Both DOIs are in `CITATION.cff` under `identifiers:`, recorded automatically at
-> release by `.github/workflows/release-identifiers.yml`. Take the one described
-> as *"Version DOI"*. The concept DOI is correct in `CITATION.cff`'s top-level
-> `doi:` field — "cite this project" — and wrong here.
-
-```
-https://doi.org/{{ZENODO_VERSION_DOI}}
-```
-
-### Software Heritage ID (optional but recommended)
-
-The SWHID from `CITATION.cff` `identifiers:` (`type: swh`). It identifies the
-exact source tree in a preservation archive, so it still resolves if the repo is
-deleted, renamed, or force-pushed — which a DOI pointing at a GitHub URL does
-not. `docs/chain-decision-tree.md` ranks it above the Zenodo DOI for exactly
-this reason.
-
-```
-{{SWHID}}
-```
-
-### Software Title (text input, required)
-
-The full name or title of the software.
+*URI · required*
 
 ```
 
 ```
 
-### Repository URL (text input, required)
+### 2. title of published software
 
-```
-https://github.com/{{REPO_ORG}}/{{REPO_NAME}}
-```
-
-### Research Project (text input, optional)
-
-URI of the FORRT Claim or PCC question this software is associated with — pull from `nanopubs/PUBLISHED.md`. This is the back-link to the FORRT chain.
+*text · required*
 
 ```
 
 ```
 
-### License (text input, optional)
+### 3. URI of repository where software is published
+
+*URI · required*
 
 ```
-https://spdx.org/licenses/MIT.html
+
 ```
 
-### Related Datasets (repeatable group, optional)
+### 4. URI of nanopublication for research project that produced software
 
-Input data DOIs (Zenodo data records, dataset DOIs, ESA product DOIs).
+*search / select · required*
 
-- _Dataset URL 1: ___
-- _Dataset URL 2: ___
+_Search / select in the UI; type to filter._
 
-### Related Publications (repeatable group, optional)
+```
 
-One-way back-links to the FORRT Outcome URI(s) the software implements, plus any cited methods papers.
+```
 
-- _Publication URL 1 (FORRT Outcome from step 05): ___
-- _Publication URL 2 (methods paper, optional): ___
+### 5. URI of related scholarly work (e.g. publication)
+
+*URI · optional · repeatable*
+
+```
+
+```
+
+### 6. URI of license of published software
+
+*URI · optional*
+
+```
+
+```
+
+### 7. URI of published dataset
+
+*URI · optional · repeatable*
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- **URI of published software** — use the Zenodo **version DOI** URL (`https://doi.org/10.5281/zenodo.<N>` for the specific release), NOT the concept DOI. Default: `https://doi.org/{{ZENODO_VERSION_DOI}}`. Fall back to a GitHub URL only if there is no Zenodo deposit at all.
+  > **Why the version DOI, not the concept DOI.** A concept DOI resolves to whatever version is *latest*. This nanopub is signed and immutable — once published it can only be retracted or superseded, never edited. If it names a concept DOI, the moment a v0.2.0 is released this permanent record silently starts describing different code, with no signature breakage and nothing to alert a reader. Both DOIs are in `CITATION.cff` under `identifiers:` (recorded at release by `.github/workflows/release-identifiers.yml`); take the one described as *"Version DOI"*. The concept DOI is correct in `CITATION.cff`'s top-level `doi:` field ("cite this project") and wrong here.
+- **Software Heritage ID** (there is no dedicated template field — record it via a Related resource / the repository note) — the SWHID from `CITATION.cff` `identifiers:` (`type: swh`). It pins the exact source tree in a preservation archive, so it still resolves if the repo is deleted, renamed, or force-pushed. `docs/chain-decision-tree.md` ranks it above the Zenodo DOI. Default: `{{SWHID}}`.
+- **repository URL** — default `https://github.com/{{REPO_ORG}}/{{REPO_NAME}}`.
+- **research project** — the URI of the FORRT Claim or PCC question this software is associated with (the back-link to the chain). Pull from `nanopubs/PUBLISHED.md`.
+- **license** — e.g. `https://spdx.org/licenses/MIT.html`.
+- **datasets / research output** — input data DOIs (Zenodo data records, ESA product DOIs); the research-output back-link is the FORRT Outcome URI(s) the software implements, plus any cited methods papers.
 
 ## Publication note
 

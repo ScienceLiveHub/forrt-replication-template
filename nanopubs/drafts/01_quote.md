@@ -11,42 +11,53 @@
 
 **Form heading:** *"Annotate a paper quotation — Annotating a paper quotation with personal interpretation"*
 
-## Field-by-field draft
+## Fields
 
-### Cited DOI (text input)
+<!-- FIELDS:GENERATED step=01_quote — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Annotating a paper quotation with personal interpretation  
+**Template URI:** https://w3id.org/np/RA24onqmqTMsraJ7ypYFOuckmNWpo4Zv5gsLqhXt7xYPU  
+*4 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Format: starts with `10.` — bare DOI, **NOT** `https://doi.org/...` form.
+### 1. DOI of the paper (starting with '10.')
 
-```
-{{PAPER_DOI}}
-```
-
-### Quote mode (radio button)
-
-- [x] **Quote whole text (less than 500 characters)**
-- [ ] Quote start/end *(use this if the quote exceeds 500 chars)*
-
-### Quoted Text (textarea, required)
-
-Verbatim from the paper PDF in `paper/`. Character-for-character. ≤ 500 chars in whole-text mode.
-
-> _Read the PDF first. Don't paraphrase from memory. See `docs/verify-before-drafting.md`._
+*URI · required · prefix `https://doi.org/`*
 
 ```
 
 ```
 
-Character count: ___ / 500.
+### 2. The exact quotation from the paper (max. 500 characters)
 
-### Comment (textarea, required)
-
-Subtitle: *"Our interpretation or explanation of why this quotation is relevant."*
-
-Why this quote matters and what the replication tests. Connect the paper's claim to the work this repo does. Don't repeat the quote.
+*text (long) · required · max 500 chars*
 
 ```
 
 ```
+
+### 3. End of quotation (optional - use when quoting beginning and end of a longer passage, max. 500 characters)
+
+*text (long) · optional · max 500 chars*
+
+```
+
+```
+
+### 4. our interpretation and explanation of why this quotation is relevant (max. 800 characters)
+
+*text (long) · required · max 800 chars*
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry. Fields are named as above.
+
+- **DOI of the paper** — enter the bare DOI starting with `10.`, **not** the `https://doi.org/…` form (the template adds the prefix itself). Default: `{{PAPER_DOI}}`.
+- **The exact quotation** — verbatim from the paper PDF in `paper/`, character-for-character. **Read the PDF first; don't paraphrase from memory** (`docs/verify-before-drafting.md`). Hard cap 500 chars; if the passage is longer, use *End of quotation* to mark a start+end span instead of pasting the whole thing.
+- **Our interpretation…** — why this quote matters and what the replication tests; connect the paper's claim to the work this repo does. Don't repeat the quote. Hard cap 800 chars, but aim well under it.
 
 ## Publication note
 

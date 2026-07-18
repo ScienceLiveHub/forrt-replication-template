@@ -86,3 +86,6 @@ test = "pytest tests/ -q"
 # Networked, so NOT in the per-PR gate — run on demand or on schedule
 # (.github/workflows/template-drift.yml). `--update` re-vendors the snapshot.
 check-templates = "python scripts/check_template_drift.py"
+# Rewrites the generated field regions in nanopubs/drafts/ from the snapshot.
+# Offline. `--check` is enforced by tests/test_draft_skeletons.py in the test job.
+gen-drafts = "python scripts/generate_draft_skeletons.py"

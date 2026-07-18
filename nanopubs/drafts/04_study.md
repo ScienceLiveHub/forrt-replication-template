@@ -4,74 +4,104 @@
 >
 > **Verify code first:** read the actual reproduction script in `notebooks/03_analysis.py` before writing the methodology field. See `docs/verify-before-drafting.md`.
 
-## Field-by-field draft
+**Form heading:** *"FORRT Replication — Declare a replication study design according to FORRT"*
 
-### Short URI suffix for study ID (text input, required)
+## Fields
 
-Slug. Use kebab-case.
+<!-- FIELDS:GENERATED step=04_study — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Declaring a replication study design according to FORRT  
+**Template URI:** https://w3id.org/np/RAuLEjPp-4dTvPwMkfHggTto1CgjIftiGRAgHlyeEonjQ  
+*9 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-```
+### 1. short URI suffix for study ID
 
-```
-
-### Label/name of replication study (text input, required)
-
-Human-readable title.
-
-```
-
-```
-
-### Study type (dropdown, required)
-
-- [ ] Reproduction Study — direct reproduction: same methodology, same tools.
-- [ ] Replication Study — replication with different methodology or conditions.
-- [ ] Reproduction/Replication Study — both.
-
-### Search for a FORRT claim (search/select, required)
-
-URI of the Claim published in step 03. Pull from `nanopubs/PUBLISHED.md`.
+*URI · required*
 
 ```
 
 ```
 
-### Describe what part of the claim is reproduced/replicated (textarea, required)
+### 2. label/name of replication study
 
-The **scope** of the claim being tested. Which aspect, what's in/out of scope. NOT methodology. NOT results. See `docs/pico-study-outcome-levels.md`.
-
-```
-
-```
-
-### Describe how the claim is reproduced/replicated (textarea, required)
-
-The **method** in plain prose. Read `notebooks/03_analysis.py` and any config files first. NOT exact numerical results.
+*text · required*
 
 ```
 
 ```
 
-### Describe any deviations from original methodology (textarea, optional)
+### 3. choose the study type
 
-What's different from the original method. Verify against the actual code, don't guess.
+*choice · required*
+
+- [ ] Replication Study - replication with different methodology or conditions
+- [ ] Reproduction/Replication Study - study that is both, reproduction and replication
+- [ ] Reproduction Study - direct reproduction: same methodology, same tools
+
+### 4. choose FORRT claim
+
+*search / select · required*
+
+_Search / select in the UI; type to filter._
 
 ```
 
 ```
 
-### Search keywords (Wikidata) (multi-select, optional)
+### 5. Describe what part of the claim is reproduced/replicated.
 
-Provide labels (not QIDs) — the Wikidata search picks up labels.
+*text (long) · required*
 
-- _Label 1: ___
-- _Label 2: ___
+```
 
-### Search discipline (Wikidata) (search, optional)
+```
 
-Provide labels.
+### 6. Describe how the claim is reproduced/replicated.
 
-- _Discipline label: ___
+*text (long) · required*
+
+```
+
+```
+
+### 7. Describe any deviations from original methodology.
+
+*text (long) · optional*
+
+```
+
+```
+
+### 8. choose terms as related keywords
+
+*search / select · optional · repeatable*
+
+_Search / select in the UI; type to filter._
+
+```
+
+```
+
+### 9. Choose the scientific discipline
+
+*search / select · optional*
+
+_Search / select in the UI; type to filter._
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- **Short URI suffix / label** — the suffix becomes part of the nanopub URI (kebab-case slug); the label is the human-readable title.
+- **FORRT claim** — the URI of the Claim published in step 03. Pull from `nanopubs/PUBLISHED.md`.
+- **scope** (*what part of the claim is reproduced/replicated*) — which aspect, what's in/out of scope. This is **scope, not methodology and not results**. See `docs/pico-study-outcome-levels.md`.
+- **methodology** (*how the claim is reproduced/replicated*) — the method in plain prose. **Read `notebooks/03_analysis.py` and any config first**; don't extrapolate framework or hyperparameters. Not exact numerical results.
+- **deviations** — what differs from the original method; verify against the actual code, don't guess.
+- **keywords / discipline** (Wikidata) — provide labels (not QIDs); the Wikidata search picks up labels.
 
 ## Publication note
 

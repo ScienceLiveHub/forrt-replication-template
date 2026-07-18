@@ -11,71 +11,87 @@
 
 **Form heading:** *"PICO Research Question — Define a research question using the PICO framework (Population, Intervention, Comparator, Outcome)"*
 
-## Field-by-field draft
+## Fields
 
-### Short ID (text input, required)
+<!-- FIELDS:GENERATED step=01_pico — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Defining a PICO-based research question  
+**Template URI:** https://w3id.org/np/RA5e5XeXy_-aNK5giB7kBAEQslTLVydHeM4YYEzhmEE2w  
+*8 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-Slug becomes part of the nanopub URI. Use kebab-case.
+### 1. short ID used as URI suffix
 
-```
-
-```
-
-### Research Question Title (text input, required)
-
-10-200 characters. Length-bounded.
+*URI · required*
 
 ```
 
 ```
 
-### Complete Research Question (textarea, required)
+### 2. label for the research question
 
-One coherent sentence/paragraph that names P, I, C, O inline.
-
-```
-
-```
-
-### Question Type (radio button, required)
-
-- [ ] Causation
-- [ ] Descriptive
-- [ ] Effectiveness
-- [ ] Experience
-- [ ] Prediction
-
-### Population (P) (textarea, required)
-
-Who/what is being studied. Discipline-level concept — not implementation. See `docs/pico-study-outcome-levels.md`.
+*text · required*
 
 ```
 
 ```
 
-### Intervention (I) (textarea, required)
+### 3. description of the research question
 
-The intervention or exposure being examined. Discipline-level concept.
-
-```
-
-```
-
-### Comparison (C) (textarea, required)
-
-The comparison or control condition. Discipline-level concept.
+*text (long) · required*
 
 ```
 
 ```
 
-### Outcome (O) (textarea, required)
+### 4. choose the type of research question
 
-What outcomes are being measured. The kind of measurement, not the value.
+*choice · required*
+
+- [ ] causation research question - (Does factor X cause outcome Y?)
+- [ ] descriptive research question - (What are the characteristics of X?)
+- [ ] effectiveness research question - (Does approach X work better than Y?)
+- [ ] experience research question - (How do people experience phenomenon X?)
+- [ ] prediction research question - (What outcomes can we expect from X?)
+
+### 5. description of the population
+
+*text (long) · required*
 
 ```
 
 ```
+
+### 6. description of the intervention group
+
+*text (long) · required*
+
+```
+
+```
+
+### 7. description of the comparator group
+
+*text (long) · required*
+
+```
+
+```
+
+### 8. description of the outcome group
+
+*text (long) · required*
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- PICO is the **question**, stated at discipline level. Keep implementation specifics (grid resolution, library, model class) out of every field — those belong in the Replication Study's *how* field. See `docs/pico-study-outcome-levels.md`.
+- **Population / Intervention / Comparison / Outcome** — each is a discipline-level concept: who/what is studied, the intervention or exposure, the comparison or control condition, and the *kind* of outcome measured (not the value).
+- Short-ID fields become part of the nanopub URI — use a kebab-case slug.
 
 ## Publication note
 

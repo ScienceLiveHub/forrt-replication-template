@@ -543,6 +543,180 @@
           "required": true,
           "repeatable": true,
           "predicate": "https://w3id.org/np/RA43F9EoOuzF0xoNUnCMNyFsfIqlsuWDdPHCnN0wCdCAw#cites",
+          "possible_values": [
+            {
+              "uri": "http://purl.org/spar/cito/agreesWith",
+              "label": "agrees with - agrees with statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/cites",
+              "label": "cites - The citing entity cites the cited entity, either directly and explicitly (as in the reference list of a journal article), indirectly (e.g. by citing a more recent paper by the same group on the same topic), or implicitly (e.g. as in artistic quotations or parodies, or in cases of plagiarism)."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsAuthority",
+              "label": "cites as authority - cites as something that provides an authoritative description or definition of the subject under discussion"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsDataSource",
+              "label": "cites as data source - cites as source of data"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsEvidence",
+              "label": "cites as evidence - cites as source of factual evidence for statements it contains"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsMetadataDocument",
+              "label": "cites as metadata document - The citing entity cites the cited entity as being the container of metadata describing the citing entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsPotentialSolution",
+              "label": "cites as potential solution - cites as providing or containing a possible solution to the issues being discussed"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsRecommendedReading",
+              "label": "cites as recommended reading - cites as an item of recommended reading"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsRelated",
+              "label": "cites as related - cites as something that is related"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesAsSourceDocument",
+              "label": "cites as source document - cites as being the entity from which the citing entity is derived, or about which the citing entity contains metadata"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/citesForInformation",
+              "label": "cites for information - cites as a source of information on the subject under discussion."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/compiles",
+              "label": "compiles - The citing entity is used to create or compile the cited entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/confirms",
+              "label": "confirms - confirms facts, ideas or statements presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/containsAssertionFrom",
+              "label": "contains assertion from - contains a statement of fact or a logical assertion originally present in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/corrects",
+              "label": "corrects - corrects statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/credits",
+              "label": "credits - acknowledges contributions made by the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/critiques",
+              "label": "critiques - critiques statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/derides",
+              "label": "derides - The citing entity express derision for the cited entity, or for ideas or conclusions contained within it"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/describes",
+              "label": "describes - describes the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/disagreesWith",
+              "label": "disagrees with - disagrees with statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/discusses",
+              "label": "discusses - discusses statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/disputes",
+              "label": "disputes - disputes statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/documents",
+              "label": "documents - documents information about the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/extends",
+              "label": "extends - extends facts, ideas or understandings presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/includesExcerptFrom",
+              "label": "includes excerpt from - The citing entity includes one or more excerpts from the cited entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/includesQuotationFrom",
+              "label": "includes quotation from - includes one or more quotations from the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/linksTo",
+              "label": "links to - provides a link, in the form of an HTTP Uniform Resource Locator (URL), to the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/obtainsBackgroundFrom",
+              "label": "obtains background from - The citing entity obtains background information from the cited entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/obtainsSupportFrom",
+              "label": "obtains support from - The citing entity obtains intellectual or factual support from the cited entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/parodies",
+              "label": "parodies - The citing entity imitates the characteristic style or content of the cited entity for comic effect, usually without explicit citation."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/plagiarizes",
+              "label": "plagiarizes - A property indicating that the author of the citing entity plagiarizes the cited entity, by including textual or other elements from the cited entity without formal acknowledgement of their source. The citing entity thus contains no explicit citation of the cited entity, according to the norms of scholarly practice, but cites it implicitly."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/qualifies",
+              "label": "qualifies - qualifies or places conditions or restrictions upon statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/refutes",
+              "label": "refutes - refutes statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/repliesTo",
+              "label": "replies to - replies to statements, ideas or criticisms presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/retracts",
+              "label": "retracts - The citing entity constitutes a formal retraction of the cited entity."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/reviews",
+              "label": "reviews - reviews statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/ridicules",
+              "label": "ridicules - The citing entity ridicules the cited entity or aspects of its contents."
+            },
+            {
+              "uri": "http://purl.org/spar/cito/speculatesOn",
+              "label": "speculates on - speculates on something within or related to the cited entity, without firm evidence"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/supports",
+              "label": "supports - provides intellectual or factual support for statements, ideas or conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/updates",
+              "label": "updates - updates statements, ideas, hypotheses or understanding presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/usesConclusionsFrom",
+              "label": "uses conclusions from - describes work that uses conclusions presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/usesDataFrom",
+              "label": "uses data from - describes work that uses data presented in the cited entity"
+            },
+            {
+              "uri": "http://purl.org/spar/cito/usesMethodIn",
+              "label": "uses method in - describes work that uses a method detailed in the cited entity"
+            }
+          ],
           "values_from": [
             "https://w3id.org/np/RAZt5kzfoJg2m4dMRdMm2SP6JeUDD_GMzSq9xyRPMgP5k"
           ]

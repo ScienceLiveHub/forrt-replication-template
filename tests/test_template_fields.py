@@ -33,9 +33,25 @@ REGISTRY = json.loads((ROOT / "nanopubs" / "templates" / "registry.json").read_t
 SNAPSHOT = json.loads((ROOT / "nanopubs" / "templates" / "fields.snapshot.json").read_text())
 
 
+# The CiTO citation type draws its choices from a value-list nanopub
+# (possibleValuesFrom). Resolve it offline from a committed fixture so the parse
+# reproduces the snapshot without hitting the network.
+_VALUE_LISTS = {
+    "https://w3id.org/np/RAZt5kzfoJg2m4dMRdMm2SP6JeUDD_GMzSq9xyRPMgP5k":
+        "values_cito",
+}
+
+
+def _resolve(value_list_uri: str) -> str:
+    name = _VALUE_LISTS[value_list_uri]
+    return (FIXTURES / f"{name}.trig").read_text()
+
+
 def _spec(step: str) -> dict:
     uri = REGISTRY["steps"][step]["current"]
-    return spec_to_dict(parse_template((FIXTURES / f"{step}.trig").read_text(), uri))
+    return spec_to_dict(
+        parse_template((FIXTURES / f"{step}.trig").read_text(), uri, resolve=_resolve)
+    )
 
 
 def _field(spec: dict, fid: str) -> dict:
@@ -109,10 +125,20 @@ def test_citation_relation_is_predicate_position_restricted_choice():
     # not subject/object — the case that made the naive extractor miss it.
     cites = _field(spec, "cites")
     assert cites["kind"] == "restricted_choice"
-    # Its allowed values come from a value-list nanopub, not inline (so the
-    # snapshot carries `values_from`, not an inline `possible_values` list).
+    # Its allowed values come from a value-list nanopub (possibleValuesFrom),
+    # which the injected resolver expands into the CiTO relation vocabulary.
     assert cites["values_from"] and cites["values_from"][0].startswith("http")
-    assert cites.get("possible_values", []) == []
+    labels = {c["label"].split(" - ")[0] for c in cites["possible_values"]}
+    assert {"confirms", "disputes", "extends"} <= labels
+
+
+def test_citation_relations_unresolved_without_a_resolver():
+    """Without a resolver the parse stays offline: the pointer is recorded but
+    the value list is not expanded."""
+    uri = REGISTRY["steps"]["06_citation"]["current"]
+    spec = spec_to_dict(parse_template((FIXTURES / "06_citation.trig").read_text(), uri))
+    cites = _field(spec, "cites")
+    assert cites["values_from"] and cites.get("possible_values", []) == []
 
 
 def test_citation_cited_is_repeatable():

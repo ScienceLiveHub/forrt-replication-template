@@ -52,13 +52,20 @@ def fetch_trig(uri: str, *, timeout: int = 30) -> str:
 
 
 def live_specs(registry: dict, *, timeout: int = 30) -> dict:
-    """Fetch + extract the field spec of every current template, keyed by step."""
+    """Fetch + extract the field spec of every current template, keyed by step.
+
+    A `resolve` callback expands `possibleValuesFrom` value-list nanopubs (e.g.
+    the CiTO relation vocabulary) so the snapshot carries the full choice set,
+    not just a pointer."""
+    def resolve(value_list_uri: str) -> str:
+        return fetch_trig(value_list_uri, timeout=timeout)
+
     specs: dict = {}
     for step, meta in registry["steps"].items():
         uri = meta["current"]
         print(f"  fetch {step:<22} {uri}", file=sys.stderr)
         trig = fetch_trig(uri, timeout=timeout)
-        specs[step] = spec_to_dict(parse_template(trig, uri))
+        specs[step] = spec_to_dict(parse_template(trig, uri, resolve=resolve))
     return specs
 
 

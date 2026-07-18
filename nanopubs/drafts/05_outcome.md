@@ -4,98 +4,114 @@
 >
 > **Verify the actual numerical results first** by reading `results/` and `notebooks/03_analysis.py`. Don't quote numbers from memory. See `docs/verify-before-drafting.md`.
 
-## Field-by-field draft
+**Form heading:** *"FORRT Replication Outcome — Declare a replication study outcome according to FORRT"*
 
-### Short URI suffix for outcome ID (text input, required)
+## Fields
 
-Slug. Use kebab-case.
+<!-- FIELDS:GENERATED step=05_outcome — generated from nanopubs/templates/fields.snapshot.json; do not edit between the markers; regenerate with `pixi run -e tests gen-drafts` -->
+**Template:** Declaring a replication study outcome according to FORRT  
+**Template URI:** https://w3id.org/np/RA2zljn0Nw9SadppOyxZoh-_Rxosslrq-vYG-p9SttnJE  
+*10 fields, in form order. This block is generated from `nanopubs/templates/fields.snapshot.json`; edit guidance outside the markers, not here.*
 
-```
+### 1. short URI suffix for outcome ID
 
-```
-
-### Plain-text label for the outcome (text input, required)
-
-Descriptive title.
-
-```
-
-```
-
-### Search for a FORRT replication study (search/select, required)
-
-URI of the Replication Study published in step 04. Pull from `nanopubs/PUBLISHED.md`.
+*URI · required*
 
 ```
 
 ```
 
-### Repository URL (text input, required)
+### 2. plain-text label for the outcome
 
-Use the Zenodo **version DOI** URL for the release the results came from — not a
-bare branch URL, and not the concept DOI.
-
-> **Why not the bare repo URL.** `https://github.com/ORG/REPO` names a *moving
-> branch*. This Outcome asserts "this code produced this number", in a signed,
-> immutable record. A branch URL means that assertion points at whatever `main`
-> happens to be years from now — code that may never have produced the number
-> above. A concept DOI has the same flaw: it resolves to the latest version.
-> The version DOI pins the exact release. `docs/chain-decision-tree.md` § Anchor
-> ranks the options: SWHID > Zenodo DOI > repo URL > Wayback.
->
-> Both DOIs and the SWHID are in `CITATION.cff` under `identifiers:`, recorded
-> automatically at release by `.github/workflows/release-identifiers.yml`. Take
-> the one described as *"Version DOI"*.
-
-```
-https://doi.org/{{ZENODO_VERSION_DOI}}
-```
-
-### Completion date (date picker, required)
-
-```
-{{RELEASE_DATE}}
-```
-
-### Validation status (dropdown, required)
-
-- [ ] Validated
-- [ ] PartiallySupported
-- [ ] Contradicted
-
-This dropdown maps to the CiTO intention in step 06: Validated → `confirms`, PartiallySupported → `qualifies`, Contradicted → `disputes`.
-
-### Confidence level (dropdown, required)
-
-_Vocabulary not yet captured._
+*text · required*
 
 ```
 
 ```
 
-### Describe the overall conclusion about the original claim (textarea, required)
+### 3. choose study
 
-Substantive interpretation. Headline comparison: replication's number vs the paper's number, sign + significance.
+*search / select · required*
 
-```
-
-```
-
-### Describe the evidence that supports your conclusion (textarea, required)
-
-Numerical results, test statistics, model coefficients. Read directly from `results/`.
+_Search / select in the UI; type to filter._
 
 ```
 
 ```
 
-### Describe what limits the conclusions of the study (textarea, optional)
+### 4. repository URL
 
-Honest caveats. If the result is partial or contradicted, say so plainly. Don't overclaim.
+*URL or DOI · required*
+
+```
+
+```
+
+### 5. choose completion date
+
+*text · required*
 
 ```
 
 ```
+
+### 6. choose validation status
+
+*choice · required*
+
+- [ ] contradicted
+- [ ] inconclusive
+- [ ] not tested
+- [ ] partially supported
+- [ ] validated
+
+### 7. describe the overall conclusion about the original claim
+
+*text (long) · required*
+
+```
+
+```
+
+### 8. describe the evidence that supports your conclusion
+
+*text (long) · required*
+
+```
+
+```
+
+### 9. choose confidence level
+
+*choice · required*
+
+- [ ] high - Strong evidence, mostly agrees with original
+- [ ] low - Limited evidence, significant disagreement
+- [ ] moderate - Adequate evidence, partial agreement
+- [ ] very high - Extensive evidence, high agreement with original
+- [ ] very low - Minimal evidence, major disagreement
+
+### 10. describe what limits the conclusions of the study
+
+*text (long) · optional*
+
+```
+
+```
+<!-- /FIELDS:GENERATED -->
+
+## Field notes
+
+Guidance the template can't carry.
+
+- **Short URI suffix / label** — the suffix becomes part of the nanopub URI (kebab-case slug); the label is a descriptive title.
+- **replication study** — the URI of the Replication Study published in step 04. Pull from `nanopubs/PUBLISHED.md`.
+- **repository URL** — use the Zenodo **version DOI** URL for the release the results came from. Default: `https://doi.org/{{ZENODO_VERSION_DOI}}`.
+  > **Why not the bare repo URL, and not the concept DOI.** `https://github.com/ORG/REPO` names a *moving branch*; this Outcome asserts "this code produced this number" in a signed, immutable record, so a branch URL points at whatever `main` becomes years from now. A concept DOI has the same flaw — it resolves to the latest version. The version DOI pins the exact release. `docs/chain-decision-tree.md` § Anchor ranks the options: SWHID > Zenodo version DOI > repo URL > Wayback. Both DOIs and the SWHID are in `CITATION.cff` under `identifiers:`, recorded at release by `.github/workflows/release-identifiers.yml` — take the one described as *"Version DOI"*.
+- **completion date** — default `{{RELEASE_DATE}}`.
+- **validation status** → maps to the CiTO intention in step 06: **validated → `confirms`**, **partially supported → `qualifies`**, **contradicted → `disputes`**. `inconclusive` / `not tested` have no canonical CiTO mapping — use `discusses` or `cites` when no stronger claim is warranted.
+- **confidence level** — signals how strong the evidence is, *independent* of validation status: a `contradicted` outcome can be `high` confidence when the evidence against the original is strong.
+- **conclusion / evidence / limitations** — conclusion is the substantive interpretation (replication's number vs the paper's, sign + significance); evidence is the numerical results/test statistics/coefficients, read directly from `results/`; limitations are honest caveats — if the result is partial or contradicted, say so plainly.
 
 ## Publication note
 
