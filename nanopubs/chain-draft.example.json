@@ -73,7 +73,21 @@
         "scope": "Tests the headline thermal-exposure-to-extirpation relationship for Iberian Bombus only; does not re-test the North American populations of the original.",
         "methodology": "GBIF Iberian Bombus occurrences regridded to equal-area HEALPix (healpix-geo, nested, depth 6) on the WGS84 ellipsoid; a GLMM of extirpation on standardised thermal-exposure change between 1901-1974 and 2000-2014 baselines.",
         "deviation": "Original used a lat/lon grid; this replication uses equal-area HEALPix to remove the area bias near the poles.",
-        "type": "https://w3id.org/sciencelive/o/terms/Replication-Study"
+        "type": "https://w3id.org/sciencelive/o/terms/Replication-Study",
+        "keywordSelection": [
+          {
+            "uri": "http://www.wikidata.org/entity/Q7942",
+            "label": "climate change"
+          },
+          {
+            "uri": "http://www.wikidata.org/entity/Q188872",
+            "label": "bumblebee"
+          }
+        ],
+        "disciplineSelection": {
+          "uri": "http://www.wikidata.org/entity/Q7150",
+          "label": "ecology"
+        }
       },
       "provenance": {
         "label": "nanopubs/drafts/04_study.md",
@@ -81,7 +95,9 @@
         "methodology": "nanopubs/drafts/04_study.md",
         "deviation": "nanopubs/drafts/04_study.md",
         "study": "derived (<org>-<repo>-<step>)",
-        "type": "nanopubs/drafts/04_study.md"
+        "type": "nanopubs/drafts/04_study.md",
+        "keywordSelection": "nanopubs/drafts/04_study.md + Wikidata",
+        "disciplineSelection": "nanopubs/drafts/04_study.md + Wikidata"
       },
       "manual": [
         "type"

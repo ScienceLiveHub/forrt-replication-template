@@ -127,6 +127,13 @@ The **URI-suffix id** of each step (`claim`, `study`, `outcome`, …), if the dr
 gives none, is suggested as `<org>-<repo>-<step>` (from `CITATION.cff`'s
 `repository-code`), editable.
 
+**Wikidata concept fields** (`04_study.keywordSelection`/`disciplineSelection`,
+`02_aida.topic`, `08_synthesis.topicSelection`) need a `{uri, label}` — but the
+draft records only plain labels. The producer resolves each label to a Wikidata
+QID at build time (one `wbsearchentities` call per label; this is the producer's
+only network use, and it degrades to leaving the field empty if Wikidata is
+unreachable). `disciplineSelection` is a single object; the rest are arrays.
+
 ## Carry-forward topology
 
 Each step's published URI fills one field of the next step. These edges are fixed

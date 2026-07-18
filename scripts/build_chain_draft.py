@@ -73,6 +73,17 @@ RELATION_FROM_STATUS = {
     "NotTested": CITO + "cites",
 }
 
+# Wikidata concept fields — (step, snapshot placeholder id) -> (form field name,
+# is_array). The agent lists plain labels in the draft; we resolve each to a
+# Wikidata {uri, label} the form can use. `disciplineSelection` is a single
+# object (not an array); the rest are arrays. Form field names from the audit.
+WIKIDATA_FIELDS = {
+    ("02_aida", "topic"): ("topic", True),
+    ("04_study", "keyword"): ("keywordSelection", True),
+    ("04_study", "discipline"): ("disciplineSelection", False),
+    ("08_synthesis", "topic"): ("topicSelection", True),
+}
+
 
 # --- metadata (CITATION.cff) ---------------------------------------------
 
@@ -291,6 +302,56 @@ def slug_for(step: str, org: str | None, repo: str | None) -> str | None:
     return s or None
 
 
+def draft_labels(draft_text: str, field: dict) -> list[str]:
+    """The plain labels the agent listed for a Wikidata field (best-effort).
+
+    The draft lists them as bullets, optionally ``- _Label 1: <value>``. Take the
+    text after a colon, or the bullet text, dropping empty/placeholder entries."""
+    body = _draft_sections(draft_text).get(_norm(field["label"]))
+    if body is None:
+        key = _norm(field["label"])
+        for hk, hv in _draft_sections(draft_text).items():
+            if hk and (hk in key or key in hk):
+                body = hv
+                break
+    if not body:
+        return []
+    out: list[str] = []
+    for line in body.splitlines():
+        m = re.match(r"\s*[-*]\s*_?[^:]*:\s*(.+?)\s*$", line) or re.match(r"\s*[-*]\s+(.+?)\s*$", line)
+        if not m:
+            continue
+        v = m.group(1).strip().strip("_").strip()
+        if v and v != "___" and "___" not in v and not v.startswith("<"):
+            out.append(v)
+    return out
+
+
+def resolve_wikidata(label: str, *, timeout: int = 15) -> dict | None:
+    """Resolve a label to a Wikidata ``{uri, label}`` via wbsearchentities (first
+    match), or None. Network; failures return None so the generator degrades to
+    leaving the field empty."""
+    import urllib.parse
+    import urllib.request
+    q = urllib.parse.urlencode({
+        "action": "wbsearchentities", "language": "en", "format": "json",
+        "limit": "1", "search": label,
+    })
+    try:
+        with urllib.request.urlopen(
+                "https://www.wikidata.org/w/api.php?" + q, timeout=timeout) as r:
+            hits = json.loads(r.read().decode("utf-8")).get("search") or []
+    except Exception:  # noqa: BLE001
+        return None
+    if not hits:
+        return None
+    h = hits[0]
+    return {
+        "uri": h.get("concepturi") or f"http://www.wikidata.org/entity/{h['id']}",
+        "label": h.get("label") or label,
+    }
+
+
 # --- assembly ------------------------------------------------------------
 
 def is_metadata_field(step: str, name: str) -> bool:
@@ -336,7 +397,7 @@ def _finish(step, registry_meta, prefill, provenance, manual, published_uri) -> 
 def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                draft_text: str | None, published_uri: str | None, *,
                org: str | None = None, repo: str | None = None,
-               cito_relation: str | None = None) -> dict:
+               cito_relation: str | None = None, resolve=None) -> dict:
     prefill: dict = {}
     provenance: dict = {}
     manual: list[str] = []
@@ -369,6 +430,19 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                 prefill[name] = choice                 # ...but pre-fill the recorded choice
                 provenance[name] = f"nanopubs/drafts/{step}.md"
             continue
+        wk = WIKIDATA_FIELDS.get((step, name))
+        if wk:                                         # Wikidata concept field
+            form_field, is_array = wk
+            items = []
+            if draft_text and resolve is not None:
+                for label in draft_labels(draft_text, f):
+                    r = resolve(label)
+                    if r:
+                        items.append(r)
+            if items:
+                prefill[form_field] = items if is_array else items[0]
+                provenance[form_field] = f"nanopubs/drafts/{step}.md + Wikidata"
+            continue
         mv = metadata_value(step, name, cff)
         if mv is not None:
             prefill[name] = mv
@@ -395,7 +469,8 @@ def detect_anchor(drafts_dir: Path) -> str:
     return "01_quote"
 
 
-def build_chain_draft(repo_root: Path, *, repository: str, commit: str) -> dict:
+def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
+                      resolve_wikidata=resolve_wikidata) -> dict:
     templates = repo_root / "nanopubs" / "templates"
     registry = json.loads((templates / "registry.json").read_text())
     snapshot = json.loads((templates / "fields.snapshot.json").read_text())["steps"]
@@ -427,7 +502,7 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str) -> dict:
         st = build_step(
             step, snapshot[step], registry["steps"][step], cff,
             dp.read_text() if dp.exists() else None, published.get(step[:2]),
-            org=org, repo=repo, cito_relation=relation,
+            org=org, repo=repo, cito_relation=relation, resolve=resolve_wikidata,
         )
         if step == "05_outcome":
             outcome_status = st["prefill"].get("validationStatus")

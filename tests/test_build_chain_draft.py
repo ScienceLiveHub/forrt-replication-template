@@ -130,7 +130,18 @@ Iberian Bombus thermal-exposure replication
 ### choose the study type
 - [ ] Reproduction Study
 - [x] Replication Study
+### choose terms as related keywords
+- _Label 1: thermal ecology
+- _Label 2: bumblebee
+### Choose the scientific discipline
+- _Discipline label: ecology
 """
+
+
+# Offline stand-in for the live Wikidata lookup.
+def _mock_wikidata(label: str):
+    return {"uri": "http://www.wikidata.org/entity/Q" + str(abs(hash(label)) % 1000),
+            "label": label}
 
 
 def _fixture_repo(tmp_path: Path) -> Path:
@@ -154,7 +165,7 @@ def _fixture_repo(tmp_path: Path) -> Path:
 def draft(tmp_path):
     root = _fixture_repo(tmp_path)
     return bcd.build_chain_draft(root, repository="https://github.com/annefou/bombus-thermal-replication",
-                                 commit="abc123")
+                                 commit="abc123", resolve_wikidata=_mock_wikidata)
 
 
 def _step(draft, sid):
@@ -258,6 +269,18 @@ def test_id_slug_is_generated_from_org_repo_step(draft):
     assert _step(draft, "04_study")["prefill"]["study"] == "annefou-bombus-thermal-replication-study"
 
 
+# --- Wikidata concept fields (resolved from draft labels) ----------------
+
+def test_wikidata_fields_resolved_to_form_shapes(draft):
+    """Keyword labels -> keywordSelection [{uri,label}]; discipline -> a single
+    {uri,label} object (not an array), matching the components."""
+    study = _step(draft, "04_study")["prefill"]
+    assert [k["label"] for k in study["keywordSelection"]] == ["thermal ecology", "bumblebee"]
+    assert all(k["uri"].startswith("http://www.wikidata.org/entity/Q") for k in study["keywordSelection"])
+    assert study["disciplineSelection"]["label"] == "ecology"          # single object
+    assert not isinstance(study["disciplineSelection"], list)
+
+
 def test_carry_fields_are_absent_from_prefill(draft):
     assert "study" not in _step(draft, "05_outcome")["prefill"]     # carried from 04
     assert "work" not in _step(draft, "06_citation")["prefill"]     # carried from 05
@@ -292,6 +315,7 @@ def test_parse_published_skips_unpublished_rows():
 def test_uninitialised_template_yields_empty_prefill():
     """Run against the repo's own uninitialised drafts: every value is a token or
     empty, so nothing is pre-filled, but the structure and manual lists stand."""
-    d = bcd.build_chain_draft(ROOT, repository="x", commit="y")
+    d = bcd.build_chain_draft(ROOT, repository="x", commit="y",
+                              resolve_wikidata=lambda label: None)
     assert all(s["prefill"] == {} for s in d["steps"])
     assert _step(d, "05_outcome")["manual"] == ["validationStatus", "confidenceLevel"]
