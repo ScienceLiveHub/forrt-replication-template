@@ -1,5 +1,5 @@
 {
-  "_comment": "Worked example of the chain-draft.json contract (see docs/chain-draft-contract.md). This is a PAPER-ROOTED chain, part-way published: steps 01-02 already have URIs (published_uri set), so a wizard would resume at step 03 and seed 03's `aida` field from step 02's URI. Real files are produced by scripts/build_chain_draft.py and are git-ignored.",
+  "_comment": "Worked example of the chain-draft.json contract (see docs/chain-draft-contract.md). This is a PAPER-ROOTED chain, part-way published: steps 01-02 already have URIs (published_uri set), so a wizard would resume at step 03 and seed 03's `aida` field from step 02's URI. Real files are produced by scripts/build_chain_draft.py and committed to the repo, so the wizard can load them by URL.",
   "schema_version": "1.0",
   "kind": "forrt-chain-draft",
   "chain_shape": "paper-rooted",

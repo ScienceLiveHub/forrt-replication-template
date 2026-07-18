@@ -34,10 +34,35 @@ Two things pre-fill each step:
 
 - **Producer:** `scripts/build_chain_draft.py` in this repo (reads `CITATION.cff`,
   `nanopubs/PUBLISHED.md`, `nanopubs/drafts/`, and `nanopubs/templates/` — see
-  "Value sources"). Output: `nanopubs/chain-draft.json` (git-ignored; regenerable).
+  "Value sources"). Output: `nanopubs/chain-draft.json`, **committed to the repo**
+  (not git-ignored) so the wizard can load it by URL — its values are all
+  non-secret repo-derived content. Regenerate and commit when the drafts change.
 - **Consumer:** the platform wizard (`science-live-platform`), which already has
   every FORRT template form component and a dormant `prefilledData` prop on each.
-  The wizard maps each step's `prefill` object onto that prop.
+  The wizard spreads each step's `prefill` object straight onto that prop — no
+  mapping layer, because the keys already are the component field names (below).
+
+## How the wizard loads the file — by URL, not upload
+
+The wizard takes the draft as a **URL**, not a file upload — simpler for the user
+and less code (`fetch(url).then(r => r.json())` instead of a file picker + reader).
+Because `chain-draft.json` is committed, every repo has a stable raw URL for it.
+
+The intended entry is a **deep link**, so a repo's Jupyter Book (or README) can
+carry a *"Publish this chain on Science Live"* button that opens the wizard
+already pointed at the draft — zero steps for the researcher:
+
+```
+https://platform.sciencelive4all.org/np/create/chain?draft=<url-encoded raw chain-draft.json URL>
+```
+
+**CORS caveat for the wizard implementer.** A browser `fetch` of
+`raw.githubusercontent.com` can be blocked by cross-origin policy. Prefer a
+CORS-clean source: the GitHub Contents API
+(`https://api.github.com/repos/OWNER/REPO/contents/nanopubs/chain-draft.json`,
+which returns base64 content with permissive CORS) or a CDN mirror
+(`https://cdn.jsdelivr.net/gh/OWNER/REPO/nanopubs/chain-draft.json`). The producer
+side is unaffected — it just writes the committed file.
 
 ## Field-name keys are the platform's, not ours
 
