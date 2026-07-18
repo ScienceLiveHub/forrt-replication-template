@@ -61,6 +61,10 @@ pytest = "*"
 # rewrites CITATION.cff in place, and pyyaml would silently delete every
 # explanatory comment in it.
 "ruamel.yaml" = "*"
+# rdflib parses the nanopub TEMPLATE TriG that IS the schema for each FORRT chain
+# step. scripts/template_fields.py extracts the field spec from it; the offline
+# tests and scripts/check_template_drift.py both need it. See nanopubs/templates/.
+rdflib = "*"
 
 [environments]
 default = { solve-group = "default" }
@@ -78,3 +82,7 @@ lab = "jupyter lab"
 #   pixi run -e tests test
 [feature.tests.tasks]
 test = "pytest tests/ -q"
+# Compares the live FORRT templates against nanopubs/templates/fields.snapshot.json.
+# Networked, so NOT in the per-PR gate — run on demand or on schedule
+# (.github/workflows/template-drift.yml). `--update` re-vendors the snapshot.
+check-templates = "python scripts/check_template_drift.py"
