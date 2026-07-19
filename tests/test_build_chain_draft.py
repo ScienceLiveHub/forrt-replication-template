@@ -138,6 +138,27 @@ Iberian Bombus thermal-exposure replication
 """
 
 
+SOFTWARE = """\
+# 07 — Research Software
+### title of published software
+```
+Iberian Bombus thermal-exposure replication code
+```
+"""
+
+SYNTHESIS = """\
+# 08 — Research Synthesis
+### label
+```
+Thermal exposure and Bombus extirpation - synthesis
+```
+### Conclusion of the synthesis
+```
+Increased thermal exposure predicts higher extirpation across regions.
+```
+"""
+
+
 # Offline stand-in for the live Wikidata lookup.
 def _mock_wikidata(label: str):
     return {"uri": "http://www.wikidata.org/entity/Q" + str(abs(hash(label)) % 1000),
@@ -164,6 +185,17 @@ def _fixture_repo(tmp_path: Path) -> Path:
 @pytest.fixture
 def draft(tmp_path):
     root = _fixture_repo(tmp_path)
+    return bcd.build_chain_draft(root, repository="https://github.com/annefou/bombus-thermal-replication",
+                                 commit="abc123", resolve_wikidata=_mock_wikidata)
+
+
+@pytest.fixture
+def draft_full(tmp_path):
+    """Fixture repo that ALSO drafts the two optional side-branches (07/08)."""
+    root = _fixture_repo(tmp_path)
+    d = root / "nanopubs" / "drafts"
+    d.joinpath("07_research_software.md").write_text(SOFTWARE)
+    d.joinpath("08_synthesis.md").write_text(SYNTHESIS)
     return bcd.build_chain_draft(root, repository="https://github.com/annefou/bombus-thermal-replication",
                                  commit="abc123", resolve_wikidata=_mock_wikidata)
 
@@ -310,6 +342,51 @@ def test_bare_doi_strips_resolver_prefix():
 def test_parse_published_skips_unpublished_rows():
     pub = bcd.parse_published(PUBLISHED)
     assert "01" in pub and "02" not in pub
+
+
+# --- optional side-branches (07 software, 08 synthesis) + their back-links ---
+
+def test_optional_steps_appended_when_drafted(draft_full):
+    # (the not-drafted -> absent case is covered by test_shape_and_backbone)
+    assert [s["step"] for s in draft_full["steps"]] == \
+        ["01_quote", "02_aida", "03_claim", "04_study", "05_outcome",
+         "06_citation", "07_research_software", "08_synthesis"]
+
+
+def test_back_link_carry_edges_are_emitted(draft_full):
+    """07/08 link back to NON-ADJACENT steps, with several links and shaped
+    targets. The linear 01->06 edges are unchanged; the back-links are added."""
+    edges = draft_full["carry_forward"]
+    # linear edges still present and unchanged
+    assert {"from": "05_outcome", "into": "06_citation", "field": "work"} in edges
+    # 07 <- Claim (scalar) + Outcome (array of strings)
+    assert {"from": "03_claim", "into": "07_research_software", "field": "project"} in edges
+    assert {"from": "05_outcome", "into": "07_research_software",
+            "field": "researchOutputs", "mode": "uriList"} in edges
+    # 08 <- Outcome (array of {source} objects)
+    assert {"from": "05_outcome", "into": "08_synthesis", "field": "sources",
+            "mode": "uriObjectList", "itemKey": "source"} in edges
+
+
+def test_back_link_fields_are_absent_from_prefill(draft_full):
+    """The carried back-links must not be content/metadata-filled here — the
+    wizard injects them from the referenced steps' published URIs."""
+    sw = _step(draft_full, "07_research_software")["prefill"]
+    assert "project" not in sw
+    assert "researchOutputs" not in sw and "researchoutput" not in sw
+    syn = _step(draft_full, "08_synthesis")["prefill"]
+    assert "sources" not in syn and "source" not in syn     # NOT the paper DOI from metadata
+    # ...but the non-carried fields of these steps are still produced
+    assert sw["software"] == "https://doi.org/10.5281/zenodo.20943752"   # CFF version DOI
+    assert sw["title"].startswith("Iberian Bombus")
+    assert syn["synthesis"] == "annefou-bombus-thermal-replication-synthesis"   # id slug
+    assert syn["conclusion"].startswith("Increased thermal exposure")
+
+
+def test_back_links_omitted_when_targets_not_in_chain(draft):
+    """No 07/08 in this chain -> no back-link edges leak into the linear draft."""
+    assert all(e["into"] not in ("07_research_software", "08_synthesis")
+               for e in draft["carry_forward"])
 
 
 def test_uninitialised_template_yields_empty_prefill():

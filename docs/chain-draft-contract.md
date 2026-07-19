@@ -150,6 +150,29 @@ for a FORRT chain and are declared in `carry_forward` so the wizard is generic:
 The wizard fills the carry-forward field from its captured URI; it does **not**
 appear in the producer's `prefill` (the URI does not exist until publish time).
 
+### Optional side-branches (07 / 08) — multiple, non-adjacent, shaped edges
+
+The two optional layers don't continue the linear chain — they link **back** to
+earlier steps, and a step can have **several** incoming edges. So a step may be
+the `into` of more than one edge, the `from` may be any earlier step (not just the
+immediately-preceding one), and the target field may be an array rather than a
+scalar. Two optional keys on an edge describe the target shape:
+
+| From (published) | Into | Field | `mode` / `itemKey` | Injected as |
+|---|---|---|---|---|
+| `03_claim` | `07_research_software` | `project` | — (scalar) | `"<uri>"` |
+| `05_outcome` | `07_research_software` | `researchOutputs` | `mode: "uriList"` | `["<uri>"]` (appended) |
+| `05_outcome` | `08_synthesis` | `sources` | `mode: "uriObjectList"`, `itemKey: "source"` | `[{ "source": "<uri>" }]` (appended) |
+
+- **No `mode`** → scalar string (the linear edges above, and `07.project`).
+- **`mode: "uriList"`** → append the URI to an array-of-strings field.
+- **`mode: "uriObjectList"`** (+ `itemKey`) → append `{ [itemKey]: uri }` to an
+  array-of-objects field.
+
+These edges are emitted only when **both** ends are present in the chain (the
+producer appends 07/08 only when their drafts have content). As with the linear
+edges, the carried field is absent from the step's `prefill`.
+
 ### Known friction (for the wizard implementer)
 
 Most back-reference fields are plain text inputs (`02_aida.project`,
@@ -194,7 +217,11 @@ fields.
     { "from": "02_aida",    "into": "03_claim",    "field": "aida"    },
     { "from": "03_claim",   "into": "04_study",    "field": "claim"   },
     { "from": "04_study",   "into": "05_outcome",  "field": "study"   },
-    { "from": "05_outcome", "into": "06_citation", "field": "work"    }
+    { "from": "05_outcome", "into": "06_citation", "field": "work"    },
+    // optional side-branches — only when 07/08 are in the chain (see above):
+    { "from": "03_claim",   "into": "07_research_software", "field": "project" },
+    { "from": "05_outcome", "into": "07_research_software", "field": "researchOutputs", "mode": "uriList" },
+    { "from": "05_outcome", "into": "08_synthesis", "field": "sources", "mode": "uriObjectList", "itemKey": "source" }
   ]
 }
 ```

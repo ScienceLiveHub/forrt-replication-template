@@ -55,6 +55,32 @@ CARRY_FIELD = {
     "05_outcome": "study", "06_citation": "work",
 }
 
+# The optional side-branches (07/08) link back to NON-ADJACENT earlier steps, and
+# a step may have several such links, so they get their own carry edges rather than
+# the linear one-per-step hop. `field` is the platform component's field name (what
+# the wizard injects the carried URI into); `placeholder` is the snapshot field id
+# to skip when building this step (it differs from `field` for the repeatables,
+# e.g. researchOutputs <- placeholder researchoutput). `mode`/`itemKey` tell the
+# wizard the target shape. See docs/chain-draft-contract.md.
+BACK_LINKS: dict[str, list[dict]] = {
+    "07_research_software": [
+        {"from": "03_claim", "field": "project", "placeholder": "project"},
+        {"from": "05_outcome", "field": "researchOutputs",
+         "placeholder": "researchoutput", "mode": "uriList"},
+    ],
+    "08_synthesis": [
+        {"from": "05_outcome", "field": "sources", "placeholder": "source",
+         "mode": "uriObjectList", "itemKey": "source"},
+    ],
+}
+
+
+def carried_placeholders(step: str) -> set[str]:
+    """Snapshot field ids that the wizard fills via carry-forward (skip here)."""
+    skip = {CARRY_FIELD[step]} if step in CARRY_FIELD else set()
+    skip.update(bl["placeholder"] for bl in BACK_LINKS.get(step, []))
+    return skip
+
 # Short slug per step, for the "Short URI suffix" id fields (<org>-<repo>-<step>).
 STEP_SLUG = {
     "01_quote": "quote", "01_pico": "pico", "01_pcc": "pcc", "02_aida": "aida",
@@ -419,10 +445,11 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                                   "cited = CITATION.cff references[article]")
         return _finish(step, registry_meta, prefill, provenance, manual, published_uri)
 
+    carried = carried_placeholders(step)
     for idx, f in enumerate(spec["fields"]):
         name = f["id"]
-        if CARRY_FIELD.get(step) == name:
-            continue                                   # wizard fills from prior URI
+        if name in carried:
+            continue                                   # wizard fills from a prior URI
         if f["kind"] == "restricted_choice":
             manual.append(name)                        # flag: agent's call, confirm it
             choice = draft_choice(draft_text, f) if draft_text else None
@@ -510,6 +537,18 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
 
     carry = [{"from": a, "into": b, "field": CARRY_FIELD[b]}
              for a, b in zip(step_ids, step_ids[1:]) if b in CARRY_FIELD]
+    present = set(step_ids)
+    for target, links in BACK_LINKS.items():                # side-branch back-links
+        if target not in present:
+            continue
+        for bl in links:
+            if bl["from"] not in present:
+                continue
+            edge = {"from": bl["from"], "into": target, "field": bl["field"]}
+            for k in ("mode", "itemKey"):
+                if k in bl:
+                    edge[k] = bl[k]
+            carry.append(edge)
 
     return {
         "schema_version": SCHEMA_VERSION,
