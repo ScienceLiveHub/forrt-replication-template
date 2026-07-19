@@ -191,7 +191,8 @@ fields.
   "chain_shape": "paper-rooted",          // "paper-rooted" | "pico" | "pcc"
   "source": {
     "repository": "https://github.com/OWNER/REPO",
-    "commit": "<sha>"                      // the repo state the values were drawn from
+    "commit": "<sha>",                     // the repo state the values were drawn from
+    "figure": "figures/main_result.png"    // optional; absent when the repo has none
   },
   "steps": [
     {
@@ -239,6 +240,31 @@ Rules:
   that already have a URI and seed carry-forward from them.
 - **Determinism:** the producer does not stamp a timestamp (so regenerating on an
   unchanged repo yields an identical file); `source.commit` records the state.
+
+## The headline figure
+
+`source.figure` is the repo-relative path to the one image that represents the
+replication. It is **not** published in any nanopublication and the wizard does
+not consume it — it is recorded because the producer is where a missing figure
+can still be noticed and fixed.
+
+The story page the platform generates from a published chain finds the figure by
+resolving the chain's Zenodo DOI to its GitHub repo and looking in `figures/`.
+So the figure reaches the blog by *being committed at that path*, not by being
+declared here. The producer applies the same rule the platform does:
+
+- only `figures/` is scanned — never `results/`, which collects run artefacts;
+- among several images, a name matching `main`, `result`, `headline` or `hero`
+  wins; otherwise the alphabetically first, so the pick never varies by machine;
+- `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg` count as images.
+
+When nothing is found the producer says so on stderr. The failure this catches is
+a figure written to a **git-ignored** path: it exists on the machine that ran the
+experiment, the author sees it locally, and the published story page has no image.
+
+Because the choice is inferred from filenames rather than stated by the author,
+it is a sensible default and not a permanent contract — a future FORRT template
+field would let the author name the figure explicitly and have it signed.
 
 ## Value sources (what the producer fills from where)
 

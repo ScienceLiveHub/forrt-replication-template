@@ -429,3 +429,68 @@ def test_uninitialised_template_yields_empty_prefill():
                               resolve_wikidata=lambda label: None)
     assert all(s["prefill"] == {} for s in d["steps"])
     assert _step(d, "05_outcome")["manual"] == ["validationStatus", "confidenceLevel"]
+
+
+# --------------------------------------------------------------- headline figure
+
+def _figures(root: Path, *names: str) -> None:
+    d = root / "figures"
+    d.mkdir(exist_ok=True)
+    for n in names:
+        (d / n).write_bytes(b"\x89PNG\r\n")
+
+
+def test_no_figure_directory_leaves_source_without_a_figure(tmp_path):
+    root = _fixture_repo(tmp_path)
+    d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                              resolve_wikidata=_mock_wikidata)
+    assert "figure" not in d["source"]
+
+
+def test_empty_figure_directory_leaves_source_without_a_figure(tmp_path):
+    root = _fixture_repo(tmp_path)
+    (root / "figures").mkdir()
+    (root / "figures" / "notes.txt").write_text("not an image")
+    d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                              resolve_wikidata=_mock_wikidata)
+    assert "figure" not in d["source"]
+
+
+def test_single_figure_is_recorded_relative_to_the_repo(tmp_path):
+    root = _fixture_repo(tmp_path)
+    _figures(root, "whatever-name.png")
+    d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                              resolve_wikidata=_mock_wikidata)
+    assert d["source"]["figure"] == "figures/whatever-name.png"
+
+
+def test_named_result_wins_over_alphabetical_order(tmp_path):
+    """A headline name beats plain sorting - otherwise 'appendix.png' would win."""
+    root = _fixture_repo(tmp_path)
+    _figures(root, "appendix.png", "main_result.png", "zz-extra.png")
+    d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                              resolve_wikidata=_mock_wikidata)
+    assert d["source"]["figure"] == "figures/main_result.png"
+
+
+def test_figure_choice_is_deterministic_regardless_of_directory_order(tmp_path):
+    """Same set of unremarkable names -> same pick, every run and every machine."""
+    picks = set()
+    for order in (("b.png", "a.png", "c.png"), ("c.png", "b.png", "a.png")):
+        root = _fixture_repo(tmp_path / order[0])
+        _figures(root, *order)
+        d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                                  resolve_wikidata=_mock_wikidata)
+        picks.add(d["source"]["figure"])
+    assert picks == {"figures/a.png"}
+
+
+def test_results_directory_is_not_scanned(tmp_path):
+    """results/ holds run artefacts and diagnostics - never the headline figure."""
+    root = _fixture_repo(tmp_path)
+    (root / "results").mkdir()
+    (root / "results" / "main_result.png").write_bytes(b"\x89PNG\r\n")
+    d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
+                              resolve_wikidata=_mock_wikidata)
+    assert "figure" not in d["source"]
+

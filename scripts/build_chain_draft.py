@@ -577,14 +577,53 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
                     edge[k] = bl[k]
             carry.append(edge)
 
+    source = {"repository": repository, "commit": commit}
+    figure = find_figure(repo_root)
+    if figure:
+        source["figure"] = figure
+
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": "forrt-chain-draft",
         "chain_shape": ANCHORS[anchor],
-        "source": {"repository": repository, "commit": commit},
+        "source": source,
         "steps": steps,
         "carry_forward": carry,
     }
+
+
+FIGURE_DIR = "figures"
+FIGURE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".svg")
+# Names an author reaches for when one image is THE result. Kept in step with the
+# platform's own resolver so both pick the same file out of a folder of several.
+FIGURE_PREFERRED_RE = re.compile(r"main|result|headline|hero", re.I)
+
+
+def find_figure(root: Path) -> str | None:
+    """The repo's headline figure, as a repo-relative path, or None.
+
+    Deterministic by construction: only ``figures/`` is scanned (never
+    ``results/``, which collects run artefacts and diagnostics), candidates are
+    sorted, and a name matching FIGURE_PREFERRED_RE wins over plain alphabetical
+    order. Ties can't happen — filenames are unique within a directory.
+
+    The story page the platform generates from the published chain resolves the
+    figure the same way, from the repo behind the chain's Zenodo DOI. Committing
+    the file is what makes it reachable: a figure written to a git-ignored path
+    exists only on the machine that ran the experiment.
+    """
+    figures = root / FIGURE_DIR
+    if not figures.is_dir():
+        return None
+    candidates = sorted(
+        p for p in figures.iterdir()
+        if p.is_file() and p.suffix.lower() in FIGURE_EXTS
+    )
+    if not candidates:
+        return None
+    preferred = [p for p in candidates if FIGURE_PREFERRED_RE.search(p.name)]
+    chosen = (preferred or candidates)[0]
+    return f"{FIGURE_DIR}/{chosen.name}"
 
 
 def draft_has_content(text: str, spec: dict, step: str = "") -> bool:
@@ -631,6 +670,13 @@ def main(argv: list[str] | None = None) -> int:
     filled = sum(len(s["prefill"]) for s in draft["steps"])
     print(f"Wrote {out} — {len(draft['steps'])} steps, {filled} fields pre-filled "
           f"({draft['chain_shape']}).", file=sys.stderr)
+    figure = draft["source"].get("figure")
+    if figure:
+        print(f"Headline figure: {figure}", file=sys.stderr)
+    else:
+        print(f"No headline figure found in {FIGURE_DIR}/ — the published chain's "
+              f"story page will have no image. Commit one image there (a "
+              f"git-ignored figure does not count).", file=sys.stderr)
     return 0
 
 
