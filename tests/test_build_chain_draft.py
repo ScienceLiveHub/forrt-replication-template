@@ -140,7 +140,7 @@ Iberian Bombus thermal-exposure replication
 
 SOFTWARE = """\
 # 07 — Research Software
-### title of published software
+### Software Title (text input, required)
 ```
 Iberian Bombus thermal-exposure replication code
 ```
@@ -160,6 +160,10 @@ Thermal exposure and Bombus extirpation - synthesis
 ### Conclusion of the synthesis
 ```
 Increased thermal exposure predicts higher extirpation across regions.
+```
+### Conditions under which the synthesis applies
+```
+Bombus occurrence data with pre-1975 and post-2000 baseline coverage.
 ```
 """
 
@@ -400,6 +404,16 @@ def test_datasets_repeatable_is_filled_from_draft_as_string_list(draft_full):
     ]
     assert "dataset" not in sw                                  # not the placeholder name
     assert "researchOutputs" not in sw                         # carried, not scraped from draft
+
+
+def test_content_fields_with_mismatched_headings_use_alias(draft_full):
+    """07 `title` and 08 `conditions` have draft headings that don't contain the
+    placeholder label; a heading alias reads them so they don't fall through
+    empty. (The drafts here use the real human headings, so no alias == blank.)"""
+    assert _step(draft_full, "07_research_software")["prefill"]["title"] == \
+        "Iberian Bombus thermal-exposure replication code"
+    assert _step(draft_full, "08_synthesis")["prefill"]["conditions"] == \
+        "Bombus occurrence data with pre-1975 and post-2000 baseline coverage."
 
 
 def test_back_links_omitted_when_targets_not_in_chain(draft):

@@ -119,6 +119,14 @@ REPEATABLE_TEXT_FIELDS = {
     ("07_research_software", "dataset"): ("datasets", "Related Datasets"),
 }
 
+# Scalar content fields whose draft heading doesn't contain the placeholder label,
+# so label-matching fails — (step, snapshot placeholder id) -> the draft heading to
+# read the value from. (The output key stays the placeholder/component field name.)
+DRAFT_HEADING_ALIAS = {
+    ("07_research_software", "title"): "Software Title",
+    ("08_synthesis", "conditions"): "Conditions under which the synthesis applies",
+}
+
 
 # --- metadata (CITATION.cff) ---------------------------------------------
 
@@ -493,7 +501,9 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             provenance[name] = "CITATION.cff"
             continue
         if is_content_field(step, idx, f):
-            val = draft_content(draft_text, f) if draft_text else None
+            alias = DRAFT_HEADING_ALIAS.get((step, name))
+            lookup = {"label": alias} if alias else f
+            val = draft_content(draft_text, lookup) if draft_text else None
             prov = f"nanopubs/drafts/{step}.md"
             if val is None and idx == 0 and f["kind"] == "uri":   # the id slug
                 val = slug_for(step, org, repo)
@@ -529,7 +539,7 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
     step_ids = [anchor] + CORE_STEPS
     for opt in OPTIONAL_STEPS:                     # append only if actually drafted
         p = drafts_dir / f"{opt}.md"
-        if p.exists() and draft_has_content(p.read_text(), snapshot.get(opt, {})):
+        if p.exists() and draft_has_content(p.read_text(), snapshot.get(opt, {}), opt):
             step_ids.append(opt)
 
     org, repo = _org_repo(repository)
@@ -577,12 +587,19 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
     }
 
 
-def draft_has_content(text: str, spec: dict) -> bool:
-    return any(
-        draft_content(text, f) is not None
-        for i, f in enumerate(spec.get("fields", []))
-        if is_content_field("", i, f)
-    )
+def draft_has_content(text: str, spec: dict, step: str = "") -> bool:
+    """Was this (optional) draft actually filled in? Mirrors build_step's routing
+    so the same value would be extracted: content fields (with heading alias) and
+    repeatable plain-URL lists both count."""
+    for i, f in enumerate(spec.get("fields", [])):
+        if is_content_field(step, i, f):
+            alias = DRAFT_HEADING_ALIAS.get((step, f["id"]))
+            if draft_content(text, {"label": alias} if alias else f) is not None:
+                return True
+        rt = REPEATABLE_TEXT_FIELDS.get((step, f["id"]))
+        if rt and draft_labels(text, {"label": rt[1]}):
+            return True
+    return False
 
 
 def _git(repo_root: Path, *args: str, default: str = "") -> str:
