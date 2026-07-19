@@ -110,6 +110,15 @@ WIKIDATA_FIELDS = {
     ("08_synthesis", "topic"): ("topicSelection", True),
 }
 
+# Repeatable plain-URL list fields — (step, snapshot placeholder id) -> (form
+# field name, draft heading). The snapshot label ("URI of published dataset")
+# doesn't match the draft's human heading ("Related Datasets"), so we read the
+# list from the draft by that heading. The draft lists one URL per bullet; the
+# component wants an array of plain strings under the form field name.
+REPEATABLE_TEXT_FIELDS = {
+    ("07_research_software", "dataset"): ("datasets", "Related Datasets"),
+}
+
 
 # --- metadata (CITATION.cff) ---------------------------------------------
 
@@ -469,6 +478,14 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             if items:
                 prefill[form_field] = items if is_array else items[0]
                 provenance[form_field] = f"nanopubs/drafts/{step}.md + Wikidata"
+            continue
+        rt = REPEATABLE_TEXT_FIELDS.get((step, name))
+        if rt:                                         # repeatable plain-URL list
+            form_field, heading = rt
+            urls = draft_labels(draft_text, {"label": heading}) if draft_text else []
+            if urls:
+                prefill[form_field] = urls             # array of plain strings
+                provenance[form_field] = f"nanopubs/drafts/{step}.md"
             continue
         mv = metadata_value(step, name, cff)
         if mv is not None:

@@ -144,6 +144,11 @@ SOFTWARE = """\
 ```
 Iberian Bombus thermal-exposure replication code
 ```
+### Related Datasets (repeatable group, optional)
+- _Dataset URL 1: https://doi.org/10.15468/dl.bombus0
+- _Dataset URL 2: https://doi.org/10.5281/zenodo.20811600
+### Related Publications (repeatable group, optional)
+- _Publication URL 1: https://doi.org/10.9999/methods-paper
 """
 
 SYNTHESIS = """\
@@ -381,6 +386,20 @@ def test_back_link_fields_are_absent_from_prefill(draft_full):
     assert sw["title"].startswith("Iberian Bombus")
     assert syn["synthesis"] == "annefou-bombus-thermal-replication-synthesis"   # id slug
     assert syn["conclusion"].startswith("Increased thermal exposure")
+
+
+def test_datasets_repeatable_is_filled_from_draft_as_string_list(draft_full):
+    """07's optional Related Datasets — read from the draft by its heading and
+    emitted under the component field name `datasets` as a list of plain URLs
+    (the singular placeholder `dataset` never leaks; Related Publications, which
+    is the carried back-link, is not scraped here)."""
+    sw = _step(draft_full, "07_research_software")["prefill"]
+    assert sw["datasets"] == [
+        "https://doi.org/10.15468/dl.bombus0",
+        "https://doi.org/10.5281/zenodo.20811600",
+    ]
+    assert "dataset" not in sw                                  # not the placeholder name
+    assert "researchOutputs" not in sw                         # carried, not scraped from draft
 
 
 def test_back_links_omitted_when_targets_not_in_chain(draft):
