@@ -87,6 +87,53 @@ or `01_pcc` (`PCC_RESEARCH_QUESTION`); the optional `07_research_software`
 (`RESEARCH_SOFTWARE`) and `08_synthesis` (`RESEARCH_SYNTHESIS`) steps append when
 applicable.
 
+## Repeatable and complex fields — array-shaped, form-field names
+
+A few template fields are **repeatable groups** (an "add another" list) or custom
+widgets, and for these the component's form-field name is **not** the template
+placeholder name and the value is **not** a flat string. `prefill` must use the
+form-field name and the exact shape below (verified against the platform's
+`create/components/templates/*.tsx`). The producer hard-codes these; the wizard
+stays a pass-through.
+
+| Step | Form field (prefill key) | Shape | Notes |
+|---|---|---|---|
+| `06_citation` | `st02` | `[{ cites, cited }]` | **required ≥1.** `cites` = a CiTO relation URI, `cited` = the cited work. This replaces flat `cites`/`cited`. |
+| `08_synthesis` | `sources` | `[{ source }]` | required ≥1 |
+| `08_synthesis` | `topicSelection` | `[{ uri, label }]` | required ≥1 |
+| `02_aida` | `st3` / `st4` | `[{ dataset }]` / `[{ publication }]` | optional |
+| `02_aida` | `topic` | `[{ uri, label }]` | optional |
+| `04_study` | `keywordSelection` | `[{ uri, label }]` | optional |
+| `04_study` | `disciplineSelection` | `{ uri, label }` | optional — a single object, **not** an array |
+| `07_research_software` | `datasets` / `researchOutputs` | `["url", …]` | optional — plain-string arrays |
+
+Two runtime notes for the wizard: **date** fields (`05_outcome.date`,
+`08_synthesis.date`) want a JS `Date` — the wizard converts a `YYYY-MM-DD` prefill
+string to a `Date` before passing it on; and the `minItems: 1` groups above must
+always carry at least one entry or the form won't submit.
+
+## Judgment fields are pre-filled, not left blank
+
+The `restricted_choice` dropdowns (claim type, study type, validation status,
+confidence, CiTO relation) are **decisions the agent already made during the
+replication**, recorded in the drafts — not things to leave to a form default
+(which can be wrong). The producer reads the agent's ticked option from the draft
+and puts it in `prefill` as an editable suggestion, **and** keeps the field in
+`manual` so the wizard flags it "confirm" rather than "you choose". The CiTO
+relation is derived from the validation status (Validated→`confirms`,
+PartiallySupported→`qualifies`, Contradicted→`disputes`, …).
+
+The **URI-suffix id** of each step (`claim`, `study`, `outcome`, …), if the draft
+gives none, is suggested as `<org>-<repo>-<step>` (from `CITATION.cff`'s
+`repository-code`), editable.
+
+**Wikidata concept fields** (`04_study.keywordSelection`/`disciplineSelection`,
+`02_aida.topic`, `08_synthesis.topicSelection`) need a `{uri, label}` — but the
+draft records only plain labels. The producer resolves each label to a Wikidata
+QID at build time (one `wbsearchentities` call per label; this is the producer's
+only network use, and it degrades to leaving the field empty if Wikidata is
+unreachable). `disciplineSelection` is a single object; the rest are arrays.
+
 ## Carry-forward topology
 
 Each step's published URI fills one field of the next step. These edges are fixed
@@ -102,6 +149,29 @@ for a FORRT chain and are declared in `carry_forward` so the wizard is generic:
 
 The wizard fills the carry-forward field from its captured URI; it does **not**
 appear in the producer's `prefill` (the URI does not exist until publish time).
+
+### Optional side-branches (07 / 08) — multiple, non-adjacent, shaped edges
+
+The two optional layers don't continue the linear chain — they link **back** to
+earlier steps, and a step can have **several** incoming edges. So a step may be
+the `into` of more than one edge, the `from` may be any earlier step (not just the
+immediately-preceding one), and the target field may be an array rather than a
+scalar. Two optional keys on an edge describe the target shape:
+
+| From (published) | Into | Field | `mode` / `itemKey` | Injected as |
+|---|---|---|---|---|
+| `03_claim` | `07_research_software` | `project` | — (scalar) | `"<uri>"` |
+| `05_outcome` | `07_research_software` | `researchOutputs` | `mode: "uriList"` | `["<uri>"]` (appended) |
+| `05_outcome` | `08_synthesis` | `sources` | `mode: "uriObjectList"`, `itemKey: "source"` | `[{ "source": "<uri>" }]` (appended) |
+
+- **No `mode`** → scalar string (the linear edges above, and `07.project`).
+- **`mode: "uriList"`** → append the URI to an array-of-strings field.
+- **`mode: "uriObjectList"`** (+ `itemKey`) → append `{ [itemKey]: uri }` to an
+  array-of-objects field.
+
+These edges are emitted only when **both** ends are present in the chain (the
+producer appends 07/08 only when their drafts have content). As with the linear
+edges, the carried field is absent from the step's `prefill`.
 
 ### Known friction (for the wizard implementer)
 
@@ -121,7 +191,8 @@ fields.
   "chain_shape": "paper-rooted",          // "paper-rooted" | "pico" | "pcc"
   "source": {
     "repository": "https://github.com/OWNER/REPO",
-    "commit": "<sha>"                      // the repo state the values were drawn from
+    "commit": "<sha>",                     // the repo state the values were drawn from
+    "figure": "figures/main_result.png"    // optional; absent when the repo has none
   },
   "steps": [
     {
@@ -147,7 +218,11 @@ fields.
     { "from": "02_aida",    "into": "03_claim",    "field": "aida"    },
     { "from": "03_claim",   "into": "04_study",    "field": "claim"   },
     { "from": "04_study",   "into": "05_outcome",  "field": "study"   },
-    { "from": "05_outcome", "into": "06_citation", "field": "work"    }
+    { "from": "05_outcome", "into": "06_citation", "field": "work"    },
+    // optional side-branches — only when 07/08 are in the chain (see above):
+    { "from": "03_claim",   "into": "07_research_software", "field": "project" },
+    { "from": "05_outcome", "into": "07_research_software", "field": "researchOutputs", "mode": "uriList" },
+    { "from": "05_outcome", "into": "08_synthesis", "field": "sources", "mode": "uriObjectList", "itemKey": "source" }
   ]
 }
 ```
@@ -165,6 +240,31 @@ Rules:
   that already have a URI and seed carry-forward from them.
 - **Determinism:** the producer does not stamp a timestamp (so regenerating on an
   unchanged repo yields an identical file); `source.commit` records the state.
+
+## The headline figure
+
+`source.figure` is the repo-relative path to the one image that represents the
+replication. It is **not** published in any nanopublication and the wizard does
+not consume it — it is recorded because the producer is where a missing figure
+can still be noticed and fixed.
+
+The story page the platform generates from a published chain finds the figure by
+resolving the chain's Zenodo DOI to its GitHub repo and looking in `figures/`.
+So the figure reaches the blog by *being committed at that path*, not by being
+declared here. The producer applies the same rule the platform does:
+
+- only `figures/` is scanned — never `results/`, which collects run artefacts;
+- among several images, a name matching `main`, `result`, `headline` or `hero`
+  wins; otherwise the alphabetically first, so the pick never varies by machine;
+- `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg` count as images.
+
+When nothing is found the producer says so on stderr. The failure this catches is
+a figure written to a **git-ignored** path: it exists on the machine that ran the
+experiment, the author sees it locally, and the published story page has no image.
+
+Because the choice is inferred from filenames rather than stated by the author,
+it is a sensible default and not a permanent contract — a future FORRT template
+field would let the author name the figure explicitly and have it signed.
 
 ## Value sources (what the producer fills from where)
 
