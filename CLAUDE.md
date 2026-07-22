@@ -139,7 +139,12 @@ Phase 5 splits cleanly in two, and the split is deliberate: **Claude authors the
 
 Every value in a draft must be **retrieved from its authoritative source, never recalled** — the quote from the PDF, the numbers from `results/`, the methodology from the notebook, a Wikidata topic from the Wikidata API (and type-checked where the template declares a type), a controlled term copied from the template's own enumeration, a DOI confirmed to resolve. The full source-and-command table is the governing rule in `.claude/agents/nanopub-drafter.md`. This matters more than it used to: publishing is now automated, so a value invented at drafting time is signed and published with no human dropdown in between to catch it.
 
-**5b — Publish the chain (deterministic, no AI tokens).**
+**5b — Publish the chain (deterministic).** Claude runs these commands, but does
+not do the work: the values come from the script, never from the model. **Never
+hand-write `chain-draft.json`** — if it looks wrong, fix the draft or the script
+and re-run. Read what the script prints and tell the user: it reports a missing
+headline figure and any Wikidata term it could not resolve, and those fields will
+be silently empty in the published chain otherwise.
 
 ```bash
 pixi run build-chain-draft        # drafts + CITATION.cff + templates -> nanopubs/chain-draft.json

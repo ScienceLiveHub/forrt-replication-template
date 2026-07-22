@@ -13,7 +13,8 @@
 
 ## Field-by-field draft
 
-### Short ID (text input, required)
+<!-- field: pico -->
+### Short ID used as URI suffix (text input, required)
 
 Slug becomes part of the nanopub URI. Use kebab-case.
 
@@ -21,6 +22,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
+<!-- field: label -->
 ### Label for the research question (text input, required)
 
 10-200 characters. Length-bounded.
@@ -29,6 +31,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
+<!-- field: description -->
 ### Description of the research question (textarea, required)
 
 One coherent sentence/paragraph that names P, I, C, O inline.
@@ -37,15 +40,17 @@ One coherent sentence/paragraph that names P, I, C, O inline.
 
 ```
 
-### Question Type (radio button, required)
+<!-- field: type -->
+### Question Type (dropdown, required)
 
-- [ ] Causation
-- [ ] Descriptive
-- [ ] Effectiveness
-- [ ] Experience
-- [ ] Prediction
+- [ ] causation research question - (Does factor X cause outcome Y?)
+- [ ] descriptive research question - (What are the characteristics of X?)
+- [ ] effectiveness research question - (Does approach X work better than Y?)
+- [ ] experience research question - (How do people experience phenomenon X?)
+- [ ] prediction research question - (What outcomes can we expect from X?)
 
-### Population (P) (textarea, required)
+<!-- field: populationDescription -->
+### Description of the population (textarea, required)
 
 Who/what is being studied. Discipline-level concept — not implementation. See `docs/pico-study-outcome-levels.md`.
 
@@ -53,7 +58,8 @@ Who/what is being studied. Discipline-level concept — not implementation. See 
 
 ```
 
-### Intervention (I) (textarea, required)
+<!-- field: interventionGroupDescription -->
+### Description of the intervention group (textarea, required)
 
 The intervention or exposure being examined. Discipline-level concept.
 
@@ -61,7 +67,8 @@ The intervention or exposure being examined. Discipline-level concept.
 
 ```
 
-### Comparator group (C) (textarea, required)
+<!-- field: comparatorGroupDescription -->
+### Description of the comparator group (textarea, required)
 
 The comparison or control condition. Discipline-level concept.
 
@@ -69,7 +76,8 @@ The comparison or control condition. Discipline-level concept.
 
 ```
 
-### Outcome (O) (textarea, required)
+<!-- field: outcomeGroupDescription -->
+### Description of the outcome group (textarea, required)
 
 What outcomes are being measured. The kind of measurement, not the value.
 

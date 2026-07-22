@@ -6,7 +6,8 @@
 
 ## Field-by-field draft
 
-### AIDA sentence (textarea, required)
+<!-- field: aida -->
+### AIDA sentence (text input, required)
 
 Atomic, Independent, Declarative, Absolute. One empirical finding. Must end with a full stop.
 
@@ -16,7 +17,8 @@ Atomic, Independent, Declarative, Absolute. One empirical finding. Must end with
 
 ```
 
-### Select related topics/tags (dropdown, optional)
+<!-- field: topic -->
+### Select related topics/tags (search/select, optional)
 
 Predefined topic vocabulary — list the labels you intend to pick from the dropdown.
 
@@ -24,7 +26,8 @@ Predefined topic vocabulary — list the labels you intend to pick from the drop
 
 ```
 
-### Relates to this nanopublication (text input, required)
+<!-- field: project -->
+### Relates to this nanopublication (search/select, required)
 
 URI of the nanopub the AIDA derives from.
 
@@ -37,14 +40,16 @@ Pull the URI from `nanopubs/PUBLISHED.md`.
 
 ```
 
-### Supported by datasets (repeatable group, optional)
+<!-- field: dataset -->
+### Supported by datasets (text input, optional)
 
 DOIs/URLs of datasets that ground the AIDA claim.
 
 - _DOI 1: ___
 - _DOI 2: ___
 
-### Supported by other publications (repeatable group, optional)
+<!-- field: publication -->
+### Supported by other publications (text input, optional)
 
 DOIs/URLs of publications that support the AIDA claim — e.g. peer-reviewed methods papers, or the original paper if not already cited via the Quote.
 

@@ -8,6 +8,7 @@
 
 ## Field-by-field draft
 
+<!-- field: software -->
 ### URI of published software (text input, required)
 
 Use the Zenodo **version DOI** URL — `https://doi.org/10.5281/zenodo.<N>` for the
@@ -43,6 +44,7 @@ this reason.
 {{SWHID}}
 ```
 
+<!-- field: title -->
 ### Software Title (text input, required)
 
 The full name or title of the software.
@@ -51,13 +53,15 @@ The full name or title of the software.
 
 ```
 
+<!-- field: repository -->
 ### Repository URL (text input, required)
 
 ```
 https://github.com/{{REPO_ORG}}/{{REPO_NAME}}
 ```
 
-### Research Project (text input, optional)
+<!-- field: project -->
+### URI of nanopublication for research project that produced software (search/select, required)
 
 URI of the FORRT Claim or PCC question this software is associated with — pull from `nanopubs/PUBLISHED.md`. This is the back-link to the FORRT chain.
 
@@ -65,20 +69,23 @@ URI of the FORRT Claim or PCC question this software is associated with — pull
 
 ```
 
-### License (text input, optional)
+<!-- field: license -->
+### URI of license of published software (text input, optional)
 
 ```
 https://spdx.org/licenses/MIT.html
 ```
 
-### Related Datasets (repeatable group, optional)
+<!-- field: dataset -->
+### Related Datasets (text input, optional)
 
 Input data DOIs (Zenodo data records, dataset DOIs, ESA product DOIs).
 
 - _Dataset URL 1: ___
 - _Dataset URL 2: ___
 
-### Related Publications (repeatable group, optional)
+<!-- field: researchoutput -->
+### Related Publications (text input, optional)
 
 One-way back-links to the FORRT Outcome URI(s) the software implements, plus any cited methods papers.
 

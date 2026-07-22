@@ -6,6 +6,7 @@
 
 ## Field-by-field draft
 
+<!-- field: study -->
 ### Short URI suffix for study ID (text input, required)
 
 Slug. Use kebab-case.
@@ -14,6 +15,7 @@ Slug. Use kebab-case.
 
 ```
 
+<!-- field: label -->
 ### Label/name of replication study (text input, required)
 
 Human-readable title.
@@ -22,13 +24,15 @@ Human-readable title.
 
 ```
 
-### Study type (dropdown, required)
+<!-- field: type -->
+### Choose the study type (dropdown, required)
 
-- [ ] Reproduction Study — direct reproduction: same methodology, same tools.
-- [ ] Replication Study — replication with different methodology or conditions.
-- [ ] Reproduction/Replication Study — both.
+- [ ] Replication Study - replication with different methodology or conditions
+- [ ] Reproduction/Replication Study - study that is both, reproduction and replication
+- [ ] Reproduction Study - direct reproduction: same methodology, same tools
 
-### Search for a FORRT claim (search/select, required)
+<!-- field: claim -->
+### Choose FORRT claim (search/select, required)
 
 URI of the Claim published in step 03. Pull from `nanopubs/PUBLISHED.md`.
 
@@ -36,7 +40,8 @@ URI of the Claim published in step 03. Pull from `nanopubs/PUBLISHED.md`.
 
 ```
 
-### Describe what part of the claim is reproduced/replicated (textarea, required)
+<!-- field: scope -->
+### Describe what part of the claim is reproduced/replicated. (textarea, required)
 
 The **scope** of the claim being tested. Which aspect, what's in/out of scope. NOT methodology. NOT results. See `docs/pico-study-outcome-levels.md`.
 
@@ -44,7 +49,8 @@ The **scope** of the claim being tested. Which aspect, what's in/out of scope. N
 
 ```
 
-### Describe how the claim is reproduced/replicated (textarea, required)
+<!-- field: methodology -->
+### Describe how the claim is reproduced/replicated. (textarea, required)
 
 The **method** in plain prose. Read `notebooks/03_analysis.py` and any config files first. NOT exact numerical results.
 
@@ -52,7 +58,8 @@ The **method** in plain prose. Read `notebooks/03_analysis.py` and any config fi
 
 ```
 
-### Describe any deviations from original methodology (textarea, optional)
+<!-- field: deviation -->
+### Describe any deviations from original methodology. (textarea, optional)
 
 What's different from the original method. Verify against the actual code, don't guess.
 
@@ -60,14 +67,16 @@ What's different from the original method. Verify against the actual code, don't
 
 ```
 
-### Search keywords (Wikidata) (multi-select, optional)
+<!-- field: keyword -->
+### Search keywords (Wikidata) (search/select, optional)
 
 Provide labels (not QIDs) — the Wikidata search picks up labels.
 
 - _Label 1: ___
 - _Label 2: ___
 
-### Search discipline (Wikidata) (search, optional)
+<!-- field: discipline -->
+### Search discipline (Wikidata) (search/select, optional)
 
 Provide labels.
 
