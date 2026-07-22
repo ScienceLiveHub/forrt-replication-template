@@ -169,7 +169,7 @@ Bombus occurrence data with pre-1975 and post-2000 baseline coverage.
 
 
 # Offline stand-in for the live Wikidata lookup.
-def _mock_wikidata(label: str):
+def _mock_wikidata(label: str, *, require_concept: bool = False):
     return {"uri": "http://www.wikidata.org/entity/Q" + str(abs(hash(label)) % 1000),
             "label": label}
 
@@ -493,4 +493,73 @@ def test_results_directory_is_not_scanned(tmp_path):
     d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
                               resolve_wikidata=_mock_wikidata)
     assert "figure" not in d["source"]
+
+
+# ------------------------------------------------- wikidata concept typing
+
+def _field(*apis):
+    return {"values_from_api": list(apis)}
+
+
+OWL_CLASS_API = ("http://purl.org/nanopub/api/find_signed_things"
+                 "?type=http%3A%2F%2Fwww.w3.org%2F2002%2F07%2Fowl%23Class&searchterm=")
+PLAIN_WIKIDATA_API = ("https://www.wikidata.org/w/api.php?action=wbsearchentities"
+                      "&language=en&format=json&limit=5&search=")
+
+
+def test_concept_type_is_read_from_the_template_not_hardcoded():
+    """Only a field whose template names owl:Class is type-constrained."""
+    assert bcd.declares_concept_type(_field(OWL_CLASS_API, PLAIN_WIKIDATA_API)) is True
+    assert bcd.declares_concept_type(_field(PLAIN_WIKIDATA_API)) is False
+    assert bcd.declares_concept_type(_field()) is False
+
+
+def test_only_the_aida_topic_is_concept_typed_in_the_real_templates():
+    """Guard against imposing a type the template does not declare.
+
+    08_synthesis has a field also called `topic`, but its template names no type,
+    so it must stay unconstrained — matching on the field *name* would silently
+    add a constraint the schema never asked for."""
+    snapshot = json.loads((TEMPLATES / "fields.snapshot.json").read_text())
+    typed = {
+        (step_id, f["id"])
+        for step_id, body in snapshot["steps"].items()
+        for f in body.get("fields", [])
+        if bcd.declares_concept_type(f)
+    }
+    assert typed == {("02_aida", "topic")}
+
+
+def test_untyped_field_resolves_to_the_first_hit(monkeypatch):
+    """No type declared -> existence only; the first search hit is used as-is."""
+    monkeypatch.setattr(bcd, "_wikidata_claims",
+                        lambda *a, **k: pytest.fail("must not type-check an untyped field"))
+    monkeypatch.setattr(bcd, "_wikidata_search",
+                        lambda label, limit, timeout: [{"id": "Q1", "label": "first"}])
+    assert bcd.resolve_wikidata("ecology")["uri"].endswith("Q1")
+
+
+def test_concept_field_skips_non_classes_and_takes_the_first_class(monkeypatch):
+    """The real failure: searching "atmospheric river" returns a painting and a
+    scholarly article alongside the concept. Only the class (P279) is acceptable."""
+    monkeypatch.setattr(bcd, "_wikidata_search", lambda label, limit, timeout: [
+        {"id": "Q111802562", "label": "Atmospheric river landscape"},  # a painting
+        {"id": "Q136915521", "label": "Atmospheric rivers' orientation..."},  # a paper
+        {"id": "Q4817119", "label": "atmospheric river"},               # the concept
+    ])
+    # only the concept carries P279 (subclass of)
+    monkeypatch.setattr(bcd, "_wikidata_claims",
+                        lambda qid, prop, **k: [{}] if qid == "Q4817119" else [])
+    got = bcd.resolve_wikidata("atmospheric river", require_concept=True)
+    assert got["uri"].endswith("Q4817119")
+    assert got["label"] == "atmospheric river"
+
+
+def test_concept_field_returns_none_rather_than_binding_a_non_class(monkeypatch):
+    """An empty field is recoverable; a wrong value signed into a nanopub is not."""
+    monkeypatch.setattr(bcd, "_wikidata_search", lambda label, limit, timeout: [
+        {"id": "Q136915521", "label": "some paper"},
+    ])
+    monkeypatch.setattr(bcd, "_wikidata_claims", lambda qid, prop, **k: [])
+    assert bcd.resolve_wikidata("atmospheric river", require_concept=True) is None
 
