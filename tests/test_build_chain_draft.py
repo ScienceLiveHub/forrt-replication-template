@@ -426,7 +426,7 @@ def test_uninitialised_template_yields_empty_prefill():
     """Run against the repo's own uninitialised drafts: every value is a token or
     empty, so nothing is pre-filled, but the structure and manual lists stand."""
     d = bcd.build_chain_draft(ROOT, repository="x", commit="y",
-                              resolve_wikidata=lambda label: None)
+                              resolve_wikidata=lambda label, **kw: None)
     assert all(s["prefill"] == {} for s in d["steps"])
     assert _step(d, "05_outcome")["manual"] == ["validationStatus", "confidenceLevel"]
 
@@ -494,6 +494,43 @@ def test_results_directory_is_not_scanned(tmp_path):
                               resolve_wikidata=_mock_wikidata)
     assert "figure" not in d["source"]
 
+
+
+# --------------------------------------- shipped skeletons match the templates
+
+def test_every_shipped_skeleton_heading_matches_its_template_field():
+    """The drafts a real replication actually fills must be extractable.
+
+    build_chain_draft matches a draft's ### heading to the template field label
+    (via _norm + loose containment, or DRAFT_HEADING_ALIAS). Nothing checked that
+    the *shipped* skeletons satisfy it: the fixtures in this file were written
+    from the template labels, while the skeletons were written from
+    docs/forrt-form-fields.md's UI wording, and the two drifted. A filled
+    01_quote.md silently yielded no quotation and no comment at all.
+
+    The uninitialised-prefill test cannot catch this — it asserts prefill is
+    *empty*, which is true whether the headings match or not."""
+    snapshot = json.loads((TEMPLATES / "fields.snapshot.json").read_text())
+    missing = []
+    for step_id, body in snapshot["steps"].items():
+        skeleton = ROOT / "nanopubs" / "drafts" / f"{step_id}.md"
+        if not skeleton.exists():
+            continue
+        headings = bcd._draft_sections(skeleton.read_text())
+        for i, field in enumerate(body.get("fields", [])):
+            if not bcd.is_content_field(step_id, i, field):
+                continue
+            alias = bcd.DRAFT_HEADING_ALIAS.get((step_id, field["id"]))
+            key = bcd._norm(alias or field["label"])
+            found = key in headings or any(
+                h and (h in key or key in h) for h in headings
+            )
+            if not found:
+                missing.append(f"{step_id}.{field['id']} (expects a heading matching {key!r})")
+    assert not missing, (
+        "these fields would silently extract nothing from a filled draft:\n  "
+        + "\n  ".join(missing)
+    )
 
 # ------------------------------------------------- wikidata concept typing
 

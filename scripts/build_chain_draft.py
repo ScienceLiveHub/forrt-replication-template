@@ -125,6 +125,11 @@ REPEATABLE_TEXT_FIELDS = {
 DRAFT_HEADING_ALIAS = {
     ("07_research_software", "title"): "Software Title",
     ("08_synthesis", "conditions"): "Conditions under which the synthesis applies",
+    # The Research Synthesis template labels this field "short URI suffix for
+    # OUTCOME ID" — copy-paste from the Outcome template (the field id is
+    # `synthesis`). The draft says "synthesis", which is what a person filling
+    # it in needs to read, so alias rather than propagate the template's slip.
+    ("08_synthesis", "synthesis"): "Short URI suffix for synthesis ID",
 }
 
 
