@@ -49,7 +49,7 @@ For each phase, dispatch to the right specialist or guide the user manually:
 | **3 Local results** | Run `pixi run snakemake --cores 1`. Compare headline number to paper. Write `nanopubs/drafts/05_outcome.md` placeholders. | manual |
 | **4 Release** | Run `docs/fair4rs-checklist.md` pre-release checklist. Cut a `gh release` with a Zenodo-formatted body. | manual |
 | **5a Draft the chain** | Use the `nanopub-drafter` agent for each step. Every value must be *retrieved* from its source, never recalled (governing rule in the agent). | `Agent({subagent_type: "nanopub-drafter"})` ×6 |
-| **5b Publish the chain** | Deterministic, no AI tokens: `pixi run build-chain-draft`, commit `nanopubs/chain-draft.json`, then open `/np/create/chain?draft=<raw url>` — the wizard pre-fills each step and carries published URIs forward. | manual (no agent) |
+| **5b Publish the chain** | Run `pixi run build-chain-draft`, **relay its warnings** (missing figure, unresolved Wikidata terms), commit `nanopubs/chain-draft.json`, then open `/np/create/chain?draft=<raw url>` — the wizard pre-fills each step and carries published URIs forward. | `Bash` — run the script, never hand-write the JSON |
 
 ### Step 3 — Phase exit checks
 
