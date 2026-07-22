@@ -21,7 +21,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
-### Research Question Title (text input, required)
+### Label for the research question (text input, required)
 
 10-200 characters. Length-bounded.
 
@@ -29,7 +29,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
-### Complete Research Question (textarea, required)
+### Description of the research question (textarea, required)
 
 One coherent sentence/paragraph that names P, I, C, O inline.
 
@@ -61,7 +61,7 @@ The intervention or exposure being examined. Discipline-level concept.
 
 ```
 
-### Comparison (C) (textarea, required)
+### Comparator group (C) (textarea, required)
 
 The comparison or control condition. Discipline-level concept.
 

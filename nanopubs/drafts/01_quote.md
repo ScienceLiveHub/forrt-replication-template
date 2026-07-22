@@ -26,7 +26,7 @@ Format: starts with `10.` — bare DOI, **NOT** `https://doi.org/...` form.
 - [x] **Quote whole text (less than 500 characters)**
 - [ ] Quote start/end *(use this if the quote exceeds 500 chars)*
 
-### Quoted Text (textarea, required)
+### The exact quotation from the paper (textarea, required, max. 500 characters)
 
 Verbatim from the paper PDF in `paper/`. Character-for-character. ≤ 500 chars in whole-text mode.
 
@@ -38,9 +38,17 @@ Verbatim from the paper PDF in `paper/`. Character-for-character. ≤ 500 chars 
 
 Character count: ___ / 500.
 
-### Comment (textarea, required)
+### End of quotation (textarea, optional)
 
-Subtitle: *"Our interpretation or explanation of why this quotation is relevant."*
+Only when quoting the beginning *and* end of a longer passage — set the mode above to
+**Quote start/end**, put the opening phrase under the previous heading and the closing
+phrase here. Leave empty for a single short quote.
+
+```
+
+```
+
+### Our interpretation and explanation of why this quotation is relevant (textarea, required, max. 800 characters)
 
 Why this quote matters and what the replication tests. Connect the paper's claim to the work this repo does. Don't repeat the quote.
 

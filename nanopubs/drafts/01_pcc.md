@@ -21,7 +21,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
-### Review Question Label (text input, required)
+### Label for the review question (text input, required)
 
 A short label for searches/discovery.
 
@@ -29,7 +29,7 @@ A short label for searches/discovery.
 
 ```
 
-### Review Question Description (textarea, required)
+### Description of the review question (textarea, required)
 
 Describe the review question in detail; commentary on why it matters.
 

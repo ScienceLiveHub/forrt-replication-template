@@ -169,7 +169,7 @@ Bombus occurrence data with pre-1975 and post-2000 baseline coverage.
 
 
 # Offline stand-in for the live Wikidata lookup.
-def _mock_wikidata(label: str):
+def _mock_wikidata(label: str, *, require_concept: bool = False):
     return {"uri": "http://www.wikidata.org/entity/Q" + str(abs(hash(label)) % 1000),
             "label": label}
 
@@ -426,7 +426,7 @@ def test_uninitialised_template_yields_empty_prefill():
     """Run against the repo's own uninitialised drafts: every value is a token or
     empty, so nothing is pre-filled, but the structure and manual lists stand."""
     d = bcd.build_chain_draft(ROOT, repository="x", commit="y",
-                              resolve_wikidata=lambda label: None)
+                              resolve_wikidata=lambda label, **kw: None)
     assert all(s["prefill"] == {} for s in d["steps"])
     assert _step(d, "05_outcome")["manual"] == ["validationStatus", "confidenceLevel"]
 
@@ -493,4 +493,110 @@ def test_results_directory_is_not_scanned(tmp_path):
     d = bcd.build_chain_draft(root, repository="https://github.com/o/r", commit="abc123",
                               resolve_wikidata=_mock_wikidata)
     assert "figure" not in d["source"]
+
+
+
+# --------------------------------------- shipped skeletons match the templates
+
+def test_every_shipped_skeleton_heading_matches_its_template_field():
+    """The drafts a real replication actually fills must be extractable.
+
+    build_chain_draft matches a draft's ### heading to the template field label
+    (via _norm + loose containment, or DRAFT_HEADING_ALIAS). Nothing checked that
+    the *shipped* skeletons satisfy it: the fixtures in this file were written
+    from the template labels, while the skeletons were written from
+    docs/forrt-form-fields.md's UI wording, and the two drifted. A filled
+    01_quote.md silently yielded no quotation and no comment at all.
+
+    The uninitialised-prefill test cannot catch this — it asserts prefill is
+    *empty*, which is true whether the headings match or not."""
+    snapshot = json.loads((TEMPLATES / "fields.snapshot.json").read_text())
+    missing = []
+    for step_id, body in snapshot["steps"].items():
+        skeleton = ROOT / "nanopubs" / "drafts" / f"{step_id}.md"
+        if not skeleton.exists():
+            continue
+        headings = bcd._draft_sections(skeleton.read_text())
+        for i, field in enumerate(body.get("fields", [])):
+            if not bcd.is_content_field(step_id, i, field):
+                continue
+            alias = bcd.DRAFT_HEADING_ALIAS.get((step_id, field["id"]))
+            key = bcd._norm(alias or field["label"])
+            found = key in headings or any(
+                h and (h in key or key in h) for h in headings
+            )
+            if not found:
+                missing.append(f"{step_id}.{field['id']} (expects a heading matching {key!r})")
+    assert not missing, (
+        "these fields would silently extract nothing from a filled draft:\n  "
+        + "\n  ".join(missing)
+    )
+
+# ------------------------------------------------- wikidata concept typing
+
+def _field(*apis):
+    return {"values_from_api": list(apis)}
+
+
+OWL_CLASS_API = ("http://purl.org/nanopub/api/find_signed_things"
+                 "?type=http%3A%2F%2Fwww.w3.org%2F2002%2F07%2Fowl%23Class&searchterm=")
+PLAIN_WIKIDATA_API = ("https://www.wikidata.org/w/api.php?action=wbsearchentities"
+                      "&language=en&format=json&limit=5&search=")
+
+
+def test_concept_type_is_read_from_the_template_not_hardcoded():
+    """Only a field whose template names owl:Class is type-constrained."""
+    assert bcd.declares_concept_type(_field(OWL_CLASS_API, PLAIN_WIKIDATA_API)) is True
+    assert bcd.declares_concept_type(_field(PLAIN_WIKIDATA_API)) is False
+    assert bcd.declares_concept_type(_field()) is False
+
+
+def test_only_the_aida_topic_is_concept_typed_in_the_real_templates():
+    """Guard against imposing a type the template does not declare.
+
+    08_synthesis has a field also called `topic`, but its template names no type,
+    so it must stay unconstrained — matching on the field *name* would silently
+    add a constraint the schema never asked for."""
+    snapshot = json.loads((TEMPLATES / "fields.snapshot.json").read_text())
+    typed = {
+        (step_id, f["id"])
+        for step_id, body in snapshot["steps"].items()
+        for f in body.get("fields", [])
+        if bcd.declares_concept_type(f)
+    }
+    assert typed == {("02_aida", "topic")}
+
+
+def test_untyped_field_resolves_to_the_first_hit(monkeypatch):
+    """No type declared -> existence only; the first search hit is used as-is."""
+    monkeypatch.setattr(bcd, "_wikidata_claims",
+                        lambda *a, **k: pytest.fail("must not type-check an untyped field"))
+    monkeypatch.setattr(bcd, "_wikidata_search",
+                        lambda label, limit, timeout: [{"id": "Q1", "label": "first"}])
+    assert bcd.resolve_wikidata("ecology")["uri"].endswith("Q1")
+
+
+def test_concept_field_skips_non_classes_and_takes_the_first_class(monkeypatch):
+    """The real failure: searching "atmospheric river" returns a painting and a
+    scholarly article alongside the concept. Only the class (P279) is acceptable."""
+    monkeypatch.setattr(bcd, "_wikidata_search", lambda label, limit, timeout: [
+        {"id": "Q111802562", "label": "Atmospheric river landscape"},  # a painting
+        {"id": "Q136915521", "label": "Atmospheric rivers' orientation..."},  # a paper
+        {"id": "Q4817119", "label": "atmospheric river"},               # the concept
+    ])
+    # only the concept carries P279 (subclass of)
+    monkeypatch.setattr(bcd, "_wikidata_claims",
+                        lambda qid, prop, **k: [{}] if qid == "Q4817119" else [])
+    got = bcd.resolve_wikidata("atmospheric river", require_concept=True)
+    assert got["uri"].endswith("Q4817119")
+    assert got["label"] == "atmospheric river"
+
+
+def test_concept_field_returns_none_rather_than_binding_a_non_class(monkeypatch):
+    """An empty field is recoverable; a wrong value signed into a nanopub is not."""
+    monkeypatch.setattr(bcd, "_wikidata_search", lambda label, limit, timeout: [
+        {"id": "Q136915521", "label": "some paper"},
+    ])
+    monkeypatch.setattr(bcd, "_wikidata_claims", lambda qid, prop, **k: [])
+    assert bcd.resolve_wikidata("atmospheric river", require_concept=True) is None
 

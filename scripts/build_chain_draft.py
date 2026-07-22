@@ -125,6 +125,11 @@ REPEATABLE_TEXT_FIELDS = {
 DRAFT_HEADING_ALIAS = {
     ("07_research_software", "title"): "Software Title",
     ("08_synthesis", "conditions"): "Conditions under which the synthesis applies",
+    # The Research Synthesis template labels this field "short URI suffix for
+    # OUTCOME ID" — copy-paste from the Outcome template (the field id is
+    # `synthesis`). The draft says "synthesis", which is what a person filling
+    # it in needs to read, so alias rather than propagate the template's slip.
+    ("08_synthesis", "synthesis"): "Short URI suffix for synthesis ID",
 }
 
 
@@ -370,29 +375,101 @@ def draft_labels(draft_text: str, field: dict) -> list[str]:
     return out
 
 
-def resolve_wikidata(label: str, *, timeout: int = 15) -> dict | None:
-    """Resolve a label to a Wikidata ``{uri, label}`` via wbsearchentities (first
-    match), or None. Network; failures return None so the generator degrades to
-    leaving the field empty."""
+# The url-encoded owl:Class that a template's typed value source names when it
+# constrains a field to a *concept*. Today only 02_aida/topic carries it.
+OWL_CLASS_ENCODED = "owl%23Class"
+
+
+def declares_concept_type(field: dict) -> bool:
+    """Does the template constrain this field to ``owl:Class`` (i.e. a concept)?
+
+    Read from the field's own ``values_from_api``, so the rule follows the
+    template rather than a hard-coded list here: if a template later constrains
+    another field, this picks it up, and fields the template leaves untyped stay
+    untyped. Never impose a type the template does not declare."""
+    return any(OWL_CLASS_ENCODED in (a or "")
+               for a in (field.get("values_from_api") or []))
+
+
+# Wikimedia's API policy requires a descriptive User-Agent and answers the
+# default Python urllib one with 403. Without this header every lookup below
+# failed and was swallowed by the except, so every Wikidata field silently came
+# back empty — a whole feature quietly doing nothing.
+WIKIDATA_API = "https://www.wikidata.org/w/api.php"
+WIKIDATA_UA = ("forrt-replication-template/1.0 "
+               "(+https://github.com/ScienceLiveHub/forrt-replication-template)")
+
+
+def _wikidata_get(params: dict, timeout: int) -> dict | None:
+    """One Wikidata API call. None on failure, with a warning — never silent:
+    a lookup that fails leaves a field empty, and the researcher needs to know
+    that happened rather than discover it after publishing."""
     import urllib.parse
     import urllib.request
-    q = urllib.parse.urlencode({
-        "action": "wbsearchentities", "language": "en", "format": "json",
-        "limit": "1", "search": label,
-    })
+    url = WIKIDATA_API + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"User-Agent": WIKIDATA_UA})
     try:
-        with urllib.request.urlopen(
-                "https://www.wikidata.org/w/api.php?" + q, timeout=timeout) as r:
-            hits = json.loads(r.read().decode("utf-8")).get("search") or []
-    except Exception:  # noqa: BLE001
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        print(f"Wikidata lookup failed ({params.get('search') or params.get('entity')}): "
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return None
+
+
+def _wikidata_search(label: str, limit: int, timeout: int) -> list:
+    """wbsearchentities hits for a label; [] on any failure."""
+    d = _wikidata_get({
+        "action": "wbsearchentities", "language": "en", "format": "json",
+        "limit": str(limit), "search": label,
+    }, timeout)
+    return (d or {}).get("search") or []
+
+
+def _wikidata_claims(qid: str, prop: str, *, timeout: int = 15) -> list:
+    """Statements of one property for an entity; [] on any failure."""
+    d = _wikidata_get({
+        "action": "wbgetclaims", "property": prop, "format": "json", "entity": qid,
+    }, timeout)
+    return ((d or {}).get("claims") or {}).get(prop) or []
+
+
+def resolve_wikidata(label: str, *, require_concept: bool = False,
+                     timeout: int = 15) -> dict | None:
+    """Resolve a label to a Wikidata ``{uri, label}``, or None. Network; failures
+    return None so the generator degrades to leaving the field empty.
+
+    ``require_concept`` — for a field whose template declares ``owl:Class``. A
+    Wikidata *class* carries ``P279`` (subclass of); an instance of a work, a
+    person or a place does not. Untyped ``wbsearchentities`` mixes them freely:
+    searching "atmospheric river" returns the concept (Q4817119, P279 -> weather
+    phenomenon), a painting, and a scholarly article. So widen the search and take
+    the first candidate that is actually a class, and return None rather than bind
+    a wrong one — an empty field is recoverable, a wrong signed value is not.
+    """
+    hits = _wikidata_search(label, 7 if require_concept else 1, timeout)
     if not hits:
         return None
-    h = hits[0]
-    return {
-        "uri": h.get("concepturi") or f"http://www.wikidata.org/entity/{h['id']}",
-        "label": h.get("label") or label,
-    }
+
+    def as_item(h: dict) -> dict:
+        return {
+            "uri": h.get("concepturi") or f"http://www.wikidata.org/entity/{h['id']}",
+            "label": h.get("label") or label,
+        }
+
+    if not require_concept:
+        return as_item(hits[0])
+    for h in hits:
+        if _wikidata_claims(h["id"], "P279", timeout=timeout):
+            return as_item(h)
+    # Nothing in the results is a class. Either the term matches only works and
+    # people, or it is a genuine concept Wikidata has not modelled with P279.
+    # Leave the field empty rather than bind a wrong entity — but say so, or the
+    # topic vanishes from the chain with nobody the wiser.
+    print(f"Wikidata: no concept (owl:Class) found for {label!r} among "
+          f"{len(hits)} results — leaving the field empty. Pick the QID by hand "
+          f"if you know the right one.", file=sys.stderr)
+    return None
 
 
 # --- assembly ------------------------------------------------------------
@@ -479,8 +556,9 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             form_field, is_array = wk
             items = []
             if draft_text and resolve is not None:
+                needs_concept = declares_concept_type(f)
                 for label in draft_labels(draft_text, f):
-                    r = resolve(label)
+                    r = resolve(label, require_concept=needs_concept)
                     if r:
                         items.append(r)
             if items:
