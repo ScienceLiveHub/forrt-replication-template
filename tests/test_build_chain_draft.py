@@ -422,13 +422,43 @@ def test_back_links_omitted_when_targets_not_in_chain(draft):
                for e in draft["carry_forward"])
 
 
-def test_uninitialised_template_yields_empty_prefill():
-    """Run against the repo's own uninitialised drafts: every value is a token or
-    empty, so nothing is pre-filled, but the structure and manual lists stand."""
+def test_repo_drafts_build_a_well_formed_chain():
+    """Run against the repo's own drafts, whatever state they are in.
+
+    This used to assert every prefill was empty, on the premise that the repo is
+    an uninitialised template. That premise holds here and is false in every repo
+    built from this template: once /init-template puts a real paper DOI and
+    release date in CITATION.cff, those values correctly propagate into the
+    01/03/05/06/08 prefills, so the assertion was a guaranteed failure on a
+    user's first push -- red CI that looks like a broken template.
+
+    The empty-prefill guarantee is a property of *token input*, not of this
+    repo's checkout, so it is asserted against a fixture below
+    (test_placeholder_tokens_are_never_prefilled). What is invariant either way
+    is the shape: the steps enumerate and the manual fields stand.
+    """
     d = bcd.build_chain_draft(ROOT, repository="x", commit="y",
                               resolve_wikidata=lambda label, **kw: None)
-    assert all(s["prefill"] == {} for s in d["steps"])
+    assert d["steps"], "the repo's drafts should yield at least one chain step"
+    assert all({"step", "template_uri", "prefill"} <= set(s) for s in d["steps"])
     assert _step(d, "05_outcome")["manual"] == ["validationStatus", "confidenceLevel"]
+
+
+def test_placeholder_tokens_are_never_prefilled(tmp_path):
+    """A wholly unsubstituted repo pre-fills nothing -- fixture-based, so it keeps
+    holding after /init-template has edited the real drafts."""
+    root = _fixture_repo(tmp_path)
+    (root / "CITATION.cff").write_text(
+        'cff-version: 1.2.0\ntitle: "{{REPO_NAME}}"\n'
+        'repository-code: "https://github.com/{{REPO_ORG}}/{{REPO_NAME}}"\n'
+        'date-released: "{{RELEASE_DATE}}"\ndoi: "{{ZENODO_DOI}}"\n'
+        'references:\n  - type: article\n    doi: "{{PAPER_DOI}}"\n'
+    )
+    for f in (root / "nanopubs" / "drafts").glob("*.md"):
+        f.write_text(f"# {f.stem}\n\n{{{{PLACEHOLDER}}}}\n")
+    d = bcd.build_chain_draft(root, repository="x", commit="y",
+                              resolve_wikidata=lambda label, **kw: None)
+    assert all(s["prefill"] == {} for s in d["steps"])
 
 
 # --------------------------------------------------------------- headline figure
