@@ -8,6 +8,7 @@
 
 ## Field-by-field draft
 
+<!-- field: synthesis -->
 ### Short URI suffix for synthesis ID (text input, required)
 
 Slug. Use kebab-case.
@@ -16,7 +17,8 @@ Slug. Use kebab-case.
 
 ```
 
-### Label of the synthesis (text input, required)
+<!-- field: label -->
+### Label (text input, required)
 
 A one-line summary.
 
@@ -24,6 +26,7 @@ A one-line summary.
 
 ```
 
+<!-- field: conclusion -->
 ### Conclusion of the synthesis (textarea, required)
 
 The aggregate finding across the underlying outcomes.
@@ -32,6 +35,7 @@ The aggregate finding across the underlying outcomes.
 
 ```
 
+<!-- field: recommendation -->
 ### Recommendations (textarea, required)
 
 Actionable guidance for practitioners.
@@ -40,6 +44,7 @@ Actionable guidance for practitioners.
 
 ```
 
+<!-- field: conditions -->
 ### Conditions under which the synthesis applies (textarea, required)
 
 Scope: data types, methods, domains, regions, time periods.
@@ -48,6 +53,7 @@ Scope: data types, methods, domains, regions, time periods.
 
 ```
 
+<!-- field: limitations -->
 ### Limitations of the synthesis (textarea, required)
 
 What was not tested? What might not generalise?
@@ -56,13 +62,15 @@ What was not tested? What might not generalise?
 
 ```
 
-### Completion date (date picker, required)
+<!-- field: date -->
+### Completion date (text input, required)
 
 ```
 {{RELEASE_DATE}}
 ```
 
-### Supporting sources (repeatable group, required ≥1)
+<!-- field: source -->
+### Supporting sources (text input, required)
 
 Each entry is a URL — typically the FORRT Outcome URIs being synthesised. Pull from `nanopubs/PUBLISHED.md` (and/or registries from sibling repos).
 
@@ -70,7 +78,8 @@ Each entry is a URL — typically the FORRT Outcome URIs being synthesised. Pull
 - _Source URL 2 (Outcome from a sibling chain): ___
 - _Source URL 3 (Research Software nanopub if applicable): ___
 
-### Search topics (Wikidata) (multi-select, optional)
+<!-- field: topic -->
+### Topic (search/select, required)
 
 Provide labels (not QIDs).
 

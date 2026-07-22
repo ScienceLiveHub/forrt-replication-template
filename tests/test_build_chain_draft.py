@@ -130,10 +130,10 @@ Iberian Bombus thermal-exposure replication
 ### choose the study type
 - [ ] Reproduction Study
 - [x] Replication Study
-### choose terms as related keywords
+### Search keywords (Wikidata) (multi-select, optional)
 - _Label 1: thermal ecology
 - _Label 2: bumblebee
-### Choose the scientific discipline
+### Search discipline (Wikidata) (search, optional)
 - _Discipline label: ecology
 """
 

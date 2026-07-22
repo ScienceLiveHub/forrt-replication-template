@@ -13,7 +13,8 @@
 
 ## Field-by-field draft
 
-### Cited DOI (text input)
+<!-- field: paper -->
+### Cited DOI (text input, required)
 
 Format: starts with `10.` — bare DOI, **NOT** `https://doi.org/...` form.
 
@@ -26,7 +27,8 @@ Format: starts with `10.` — bare DOI, **NOT** `https://doi.org/...` form.
 - [x] **Quote whole text (less than 500 characters)**
 - [ ] Quote start/end *(use this if the quote exceeds 500 chars)*
 
-### The exact quotation from the paper (textarea, required, max. 500 characters)
+<!-- field: quotation -->
+### The exact quotation from the paper (max. 500 characters) (textarea, required)
 
 Verbatim from the paper PDF in `paper/`. Character-for-character. ≤ 500 chars in whole-text mode.
 
@@ -38,7 +40,8 @@ Verbatim from the paper PDF in `paper/`. Character-for-character. ≤ 500 chars 
 
 Character count: ___ / 500.
 
-### End of quotation (textarea, optional)
+<!-- field: quotation-end -->
+### End of quotation (optional - use when quoting beginning and end of a longer passage, max. 500 characters) (textarea, optional)
 
 Only when quoting the beginning *and* end of a longer passage — set the mode above to
 **Quote start/end**, put the opening phrase under the previous heading and the closing
@@ -48,7 +51,8 @@ phrase here. Leave empty for a single short quote.
 
 ```
 
-### Our interpretation and explanation of why this quotation is relevant (textarea, required, max. 800 characters)
+<!-- field: comment -->
+### Our interpretation and explanation of why this quotation is relevant (max. 800 characters) (textarea, required)
 
 Why this quote matters and what the replication tests. Connect the paper's claim to the work this repo does. Don't repeat the quote.
 

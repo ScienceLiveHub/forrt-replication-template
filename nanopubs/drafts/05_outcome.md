@@ -6,6 +6,7 @@
 
 ## Field-by-field draft
 
+<!-- field: outcome -->
 ### Short URI suffix for outcome ID (text input, required)
 
 Slug. Use kebab-case.
@@ -14,6 +15,7 @@ Slug. Use kebab-case.
 
 ```
 
+<!-- field: label -->
 ### Plain-text label for the outcome (text input, required)
 
 Descriptive title.
@@ -22,7 +24,8 @@ Descriptive title.
 
 ```
 
-### Search for a FORRT replication study (search/select, required)
+<!-- field: study -->
+### Choose study (search/select, required)
 
 URI of the Replication Study published in step 04. Pull from `nanopubs/PUBLISHED.md`.
 
@@ -30,6 +33,7 @@ URI of the Replication Study published in step 04. Pull from `nanopubs/PUBLISHED
 
 ```
 
+<!-- field: repo -->
 ### Repository URL (text input, required)
 
 Use the Zenodo **version DOI** URL for the release the results came from — not a
@@ -51,21 +55,27 @@ bare branch URL, and not the concept DOI.
 https://doi.org/{{ZENODO_VERSION_DOI}}
 ```
 
-### Completion date (date picker, required)
+<!-- field: date -->
+### Choose completion date (text input, required)
 
 ```
 {{RELEASE_DATE}}
 ```
 
-### Validation status (dropdown, required)
+<!-- field: validationStatus -->
+### Choose validation status (dropdown, required)
 
-- [ ] Validated
-- [ ] PartiallySupported
-- [ ] Contradicted
 
 This dropdown maps to the CiTO intention in step 06: Validated → `confirms`, PartiallySupported → `qualifies`, Contradicted → `disputes`.
 
-### Confidence level (dropdown, required)
+- [ ] contradicted
+- [ ] inconclusive
+- [ ] not tested
+- [ ] partially supported
+- [ ] validated
+
+<!-- field: confidenceLevel -->
+### Choose confidence level (dropdown, required)
 
 _Vocabulary not yet captured._
 
@@ -73,6 +83,13 @@ _Vocabulary not yet captured._
 
 ```
 
+- [ ] high - Strong evidence, mostly agrees with original
+- [ ] low - Limited evidence, significant disagreement
+- [ ] moderate - Adequate evidence, partial agreement
+- [ ] very high - Extensive evidence, high agreement with original
+- [ ] very low - Minimal evidence, major disagreement
+
+<!-- field: conclusion -->
 ### Describe the overall conclusion about the original claim (textarea, required)
 
 Substantive interpretation. Headline comparison: replication's number vs the paper's number, sign + significance.
@@ -81,6 +98,7 @@ Substantive interpretation. Headline comparison: replication's number vs the pap
 
 ```
 
+<!-- field: evidence -->
 ### Describe the evidence that supports your conclusion (textarea, required)
 
 Numerical results, test statistics, model coefficients. Read directly from `results/`.
@@ -89,6 +107,7 @@ Numerical results, test statistics, model coefficients. Read directly from `resu
 
 ```
 
+<!-- field: limitations -->
 ### Describe what limits the conclusions of the study (textarea, optional)
 
 Honest caveats. If the result is partial or contradicted, say so plainly. Don't overclaim.

@@ -6,6 +6,7 @@
 
 ## Field-by-field draft
 
+<!-- field: work -->
 ### Identifier for the citing creative work (text input, required)
 
 URI of the Outcome published in step 05. Pull from `nanopubs/PUBLISHED.md`.

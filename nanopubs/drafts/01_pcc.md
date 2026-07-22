@@ -13,7 +13,8 @@
 
 ## Field-by-field draft
 
-### Short ID (text input, required)
+<!-- field: reviewQuestion -->
+### Short ID used as URI suffix (text input, required)
 
 Slug becomes part of the nanopub URI. Use kebab-case.
 
@@ -21,6 +22,7 @@ Slug becomes part of the nanopub URI. Use kebab-case.
 
 ```
 
+<!-- field: label -->
 ### Label for the review question (text input, required)
 
 A short label for searches/discovery.
@@ -29,6 +31,7 @@ A short label for searches/discovery.
 
 ```
 
+<!-- field: description -->
 ### Description of the review question (textarea, required)
 
 Describe the review question in detail; commentary on why it matters.
@@ -37,7 +40,8 @@ Describe the review question in detail; commentary on why it matters.
 
 ```
 
-### Population (textarea, required)
+<!-- field: populationDescription -->
+### Description of the population (textarea, required)
 
 The population or participants being studied.
 
@@ -45,7 +49,8 @@ The population or participants being studied.
 
 ```
 
-### Concept (textarea, required)
+<!-- field: conceptDescription -->
+### Description of the concept (textarea, required)
 
 The core concept or phenomenon being examined.
 
@@ -53,7 +58,8 @@ The core concept or phenomenon being examined.
 
 ```
 
-### Context (textarea, required)
+<!-- field: contextDescription -->
+### Description of the context (textarea, required)
 
 The context or setting in which the review is conducted.
 

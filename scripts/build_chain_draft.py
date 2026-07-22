@@ -130,6 +130,27 @@ DRAFT_HEADING_ALIAS = {
     # `synthesis`). The draft says "synthesis", which is what a person filling
     # it in needs to read, so alias rather than propagate the template's slip.
     ("08_synthesis", "synthesis"): "Short URI suffix for synthesis ID",
+    # More template labels a person cannot act on. `date` has an EMPTY label
+    # upstream, so nothing could ever match it; the rest are RDF-shaped ("URI of
+    # repository where software is published") where the draft says what the
+    # researcher actually pastes.
+    ("07_research_software", "repository"): "Repository URL",
+    ("07_research_software", "researchoutput"): "Related Publications",
+    ("08_synthesis", "source"): "Supporting sources",
+    ("08_synthesis", "date"): "Completion date",
+    ("06_citation", "work"): "Identifier for the citing creative work",
+    # The Wikidata pickers: the draft uses the platform's own wording so the
+    # drafter recognises the control they will meet in the form.
+    ("04_study", "keyword"): "Search keywords (Wikidata)",
+    ("04_study", "discipline"): "Search discipline (Wikidata)",
+    ("03_claim", "aida"): "Search for an AIDA sentence",
+    ("02_aida", "aida"): "AIDA sentence",
+    ("02_aida", "topic"): "Select related topics/tags",
+    ("02_aida", "project"): "Relates to this nanopublication",
+    ("02_aida", "dataset"): "Supported by datasets",
+    ("02_aida", "publication"): "Supported by other publications",
+    ("01_quote", "paper"): "Cited DOI",
+    ("01_pico", "type"): "Question Type",
 }
 
 
@@ -557,7 +578,9 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             items = []
             if draft_text and resolve is not None:
                 needs_concept = declares_concept_type(f)
-                for label in draft_labels(draft_text, f):
+                wk_alias = DRAFT_HEADING_ALIAS.get((step, name))
+                wk_lookup = {"label": wk_alias} if wk_alias else f
+                for label in draft_labels(draft_text, wk_lookup):
                     r = resolve(label, require_concept=needs_concept)
                     if r:
                         items.append(r)
