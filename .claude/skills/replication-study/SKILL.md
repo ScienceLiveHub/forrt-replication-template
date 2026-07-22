@@ -48,7 +48,8 @@ For each phase, dispatch to the right specialist or guide the user manually:
 | **2 Code & data port** | Use the `replication-coder` agent. Update `pixi.toml` (+ `pixi.lock`), notebooks, Snakefile. | `Agent({subagent_type: "replication-coder"})` |
 | **3 Local results** | Run `pixi run snakemake --cores 1`. Compare headline number to paper. Write `nanopubs/drafts/05_outcome.md` placeholders. | manual |
 | **4 Release** | Run `docs/fair4rs-checklist.md` pre-release checklist. Cut a `gh release` with a Zenodo-formatted body. | manual |
-| **5 FORRT chain** | Use the `nanopub-drafter` agent for each step. User publishes each draft on platform.sciencelive4all.org and pastes the URI into `nanopubs/PUBLISHED.md`. | `Agent({subagent_type: "nanopub-drafter"})` ×6 |
+| **5a Draft the chain** | Use the `nanopub-drafter` agent for each step. Every value must be *retrieved* from its source, never recalled (governing rule in the agent). | `Agent({subagent_type: "nanopub-drafter"})` ×6 |
+| **5b Publish the chain** | Deterministic, no AI tokens: `pixi run build-chain-draft`, commit `nanopubs/chain-draft.json`, then open `/np/create/chain?draft=<raw url>` — the wizard pre-fills each step and carries published URIs forward. | manual (no agent) |
 
 ### Step 3 — Phase exit checks
 

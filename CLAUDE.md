@@ -133,11 +133,30 @@ A FORRT chain has six steps in order. Each step is published as a separate nanop
 - **Paper-rooted** (almost always for a replication): Quote-with-comment → AIDA → FORRT Claim → Replication Study → Replication Outcome → CiTO Citation.
 - **Question-rooted** (no upstream paper): PCC or PICO question → AIDA → FORRT Claim → Replication Study → Replication Outcome → CiTO Citation.
 
-For each step, draft field-by-field into `nanopubs/drafts/0X_<step>.md` using the exact form structure documented in `docs/forrt-form-fields.md`. **Never invent field names**. **Never ship a draft that contains only the headline content without the full field enumeration.** The pre-flight checklist in `docs/forrt-form-fields.md` is non-negotiable; run it before every draft.
+Phase 5 splits cleanly in two, and the split is deliberate: **Claude authors the content; deterministic code does every mechanical step.** Researchers have limited AI credits, so nothing that a script can do is done by an agent.
 
-Once each draft is approved, the user copies the fields into the Science Live UI and publishes. The published URI goes into `nanopubs/PUBLISHED.md` and is referenced by downstream steps in the chain.
+**5a — Draft the content (Claude).** For each step, draft field-by-field into `nanopubs/drafts/0X_<step>.md` using the exact form structure documented in `docs/forrt-form-fields.md`, via the `nanopub-drafter` agent. **Never invent field names**. **Never ship a draft that contains only the headline content without the full field enumeration.** The pre-flight checklist in `docs/forrt-form-fields.md` is non-negotiable; run it before every draft.
 
-Exit: all six URIs are listed in `nanopubs/PUBLISHED.md`, the Jupyter Book embeds at least one of them, and the chain is browsable from `index.md`.
+Every value in a draft must be **retrieved from its authoritative source, never recalled** — the quote from the PDF, the numbers from `results/`, the methodology from the notebook, a Wikidata topic from the Wikidata API (and type-checked where the template declares a type), a controlled term copied from the template's own enumeration, a DOI confirmed to resolve. The full source-and-command table is the governing rule in `.claude/agents/nanopub-drafter.md`. This matters more than it used to: publishing is now automated, so a value invented at drafting time is signed and published with no human dropdown in between to catch it.
+
+**5b — Publish the chain (deterministic, no AI tokens).**
+
+```bash
+pixi run build-chain-draft        # drafts + CITATION.cff + templates -> nanopubs/chain-draft.json
+git add nanopubs/chain-draft.json && git commit -m "Add chain draft" && git push
+```
+
+Then open the Science Live chain wizard with that file's URL:
+
+```
+https://platform.sciencelive4all.org/np/create/chain?draft=<raw URL of nanopubs/chain-draft.json>
+```
+
+The wizard walks the chain in order with every step pre-filled from the draft, you review and publish each one, and **it carries each published URI into the next step's back-reference automatically** — no copy-paste, no manual ordering. See `docs/chain-draft-contract.md` for the file format and what pre-fills what.
+
+*Fallback:* if the platform can't reach your `chain-draft.json` (a private repo, or working offline), publish each drafted step by hand in the Science Live UI in chain order, pasting each returned URI into the next step and into `nanopubs/PUBLISHED.md`.
+
+Exit: all six URIs are listed in `nanopubs/PUBLISHED.md`, the Jupyter Book embeds at least one of them, and the chain is browsable from `index.md`. **Then run `/verify-chain`** — it must come back green before the chain is announced.
 
 ## Universal anti-patterns (apply across all phases)
 
@@ -182,6 +201,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | When you are about to… | Read this |
 |---|---|
 | Draft any nanopub field | `docs/forrt-form-fields.md` |
+| Publish the chain (draft → wizard) | `docs/chain-draft-contract.md` + `pixi run build-chain-draft` |
 | Decide which template starts the chain | `docs/chain-decision-tree.md` |
 | Choose the FORRT Claim type | `docs/claim-type-vocabulary.md` |
 | Write the Quote, Study, or Outcome | `docs/verify-before-drafting.md` |
