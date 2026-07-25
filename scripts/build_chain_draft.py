@@ -538,7 +538,8 @@ def _finish(step, registry_meta, prefill, provenance, manual, published_uri) -> 
 def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                draft_text: str | None, published_uri: str | None, *,
                org: str | None = None, repo: str | None = None,
-               cito_relation: str | None = None, resolve=None) -> dict:
+               cito_relation: str | None = None, resolve=None,
+               drafts_label: str = "nanopubs/drafts") -> dict:
     prefill: dict = {}
     provenance: dict = {}
     manual: list[str] = []
@@ -570,7 +571,7 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             choice = draft_choice(draft_text, f) if draft_text else None
             if choice is not None:
                 prefill[name] = choice                 # ...but pre-fill the recorded choice
-                provenance[name] = f"nanopubs/drafts/{step}.md"
+                provenance[name] = f"{drafts_label}/{step}.md"
             continue
         wk = WIKIDATA_FIELDS.get((step, name))
         if wk:                                         # Wikidata concept field
@@ -586,7 +587,7 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                         items.append(r)
             if items:
                 prefill[form_field] = items if is_array else items[0]
-                provenance[form_field] = f"nanopubs/drafts/{step}.md + Wikidata"
+                provenance[form_field] = f"{drafts_label}/{step}.md + Wikidata"
             continue
         rt = REPEATABLE_TEXT_FIELDS.get((step, name))
         if rt:                                         # repeatable plain-URL list
@@ -594,7 +595,7 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             urls = draft_labels(draft_text, {"label": heading}) if draft_text else []
             if urls:
                 prefill[form_field] = urls             # array of plain strings
-                provenance[form_field] = f"nanopubs/drafts/{step}.md"
+                provenance[form_field] = f"{drafts_label}/{step}.md"
             continue
         mv = metadata_value(step, name, cff)
         if mv is not None:
@@ -605,7 +606,7 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             alias = DRAFT_HEADING_ALIAS.get((step, name))
             lookup = {"label": alias} if alias else f
             val = draft_content(draft_text, lookup) if draft_text else None
-            prov = f"nanopubs/drafts/{step}.md"
+            prov = f"{drafts_label}/{step}.md"
             if val is None and idx == 0 and f["kind"] == "uri":   # the id slug
                 val = slug_for(step, org, repo)
                 prov = "derived (<org>-<repo>-<step>)"
@@ -625,11 +626,18 @@ def detect_anchor(drafts_dir: Path) -> str:
 
 
 def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
-                      resolve_wikidata=resolve_wikidata) -> dict:
+                      resolve_wikidata=resolve_wikidata,
+                      drafts_dir: Path | None = None) -> dict:
     templates = repo_root / "nanopubs" / "templates"
     registry = json.loads((templates / "registry.json").read_text())
     snapshot = json.loads((templates / "fields.snapshot.json").read_text())["steps"]
-    drafts_dir = repo_root / "nanopubs" / "drafts"
+    # CITATION.cff / PUBLISHED.md / templates always come from repo_root; only the
+    # drafts dir is overridable, so a second limb (e.g. nanopubs/drafts-turbidity/)
+    # builds its own chain-draft.json against the same repo metadata. See --drafts-dir.
+    if drafts_dir is None:
+        drafts_dir = repo_root / "nanopubs" / "drafts"
+    drafts_label = (drafts_dir.relative_to(repo_root).as_posix()
+                    if drafts_dir.is_relative_to(repo_root) else str(drafts_dir))
 
     cff_path = repo_root / "CITATION.cff"
     cff = load_citation(cff_path.read_text()) if cff_path.exists() else {}
@@ -658,6 +666,7 @@ def build_chain_draft(repo_root: Path, *, repository: str, commit: str,
             step, snapshot[step], registry["steps"][step], cff,
             dp.read_text() if dp.exists() else None, published.get(step[:2]),
             org=org, repo=repo, cito_relation=relation, resolve=resolve_wikidata,
+            drafts_label=drafts_label,
         )
         if step == "05_outcome":
             outcome_status = st["prefill"].get("validationStatus")
@@ -755,6 +764,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--repo-root", default=".", help="Repository root (default: cwd).")
     p.add_argument("-o", "--out", default=None,
                    help="Output path (default: <repo-root>/nanopubs/chain-draft.json).")
+    p.add_argument("--drafts-dir", default=None,
+                   help="Drafts directory (default: <repo-root>/nanopubs/drafts). Point "
+                        "at a sibling set (e.g. nanopubs/drafts-turbidity/) to build a "
+                        "second limb's chain from the same CITATION.cff and templates.")
     args = p.parse_args(argv)
 
     root = Path(args.repo_root).resolve()
@@ -764,7 +777,9 @@ def main(argv: list[str] | None = None) -> int:
     repo_url = re.sub(r"\.git$", "", repo_url)
     commit = _git(root, "rev-parse", "HEAD", default="HEAD")
 
-    draft = build_chain_draft(root, repository=repo_url, commit=commit)
+    drafts_dir = Path(args.drafts_dir).resolve() if args.drafts_dir else None
+    draft = build_chain_draft(root, repository=repo_url, commit=commit,
+                              drafts_dir=drafts_dir)
     out = Path(args.out) if args.out else root / "nanopubs" / "chain-draft.json"
     out.write_text(json.dumps(draft, indent=2, ensure_ascii=False) + "\n")
 
