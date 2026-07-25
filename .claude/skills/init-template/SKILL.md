@@ -12,14 +12,24 @@ You're invoked the first time a user opens Claude in a repository that was creat
 Verify this is a freshly-instantiated template:
 
 ```bash
+test -f .template-uninitialised && echo "UNINITIALISED"
+```
+
+The sentinel is the authoritative signal (same one CI, Docker, and the Jupyter
+Book workflow use — see `CLAUDE.md` § First-run guard). If it is absent, tell the
+user the repo is already initialised and exit.
+
+To see *which* files carry tokens, use the scoped list below — but note it is a
+survey, not the detection test. Some tokens are load-bearing fixtures that must
+survive initialisation (Step 4).
+
+```bash
 grep -rln '{{[A-Z_]\+}}' . \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='Dockerfile' --include='LICENSE' \
-  2>/dev/null | grep -v '^./.claude/' | head
+  2>/dev/null | grep -vE '^\./(\.claude|tests|scripts)/' | head
 ```
-
-If no tokens are found, tell the user the repo is already initialised and exit.
 
 ## Step 2 — Derive what you can without asking
 
@@ -66,16 +76,37 @@ For tokens that don't apply yet (e.g. `{{ZENODO_DOI}}` — minted at first relea
 
 ## Step 4 — Substitute
 
-For each token, run a find-and-replace across all files in the repo (excluding `.git/` and the `.claude/skills/init-template/` directory itself, which contains the literal token examples in this SKILL.md):
+For each token, run a find-and-replace across the repo — but **not across all of
+it**. Three trees are excluded, and the third is not optional:
+
+- `.git/` — obviously.
+- `.claude/` — this SKILL.md documents the token system, and
+  `skills/replication-study/SKILL.md` names `{{PRIOR_CHAIN_URI}}` as a concept.
+- **`tests/` and `scripts/`** — these carry `{{TOKEN}}` strings as *literal
+  fixtures* for the placeholder-detection logic in `scripts/build_chain_draft.py`
+  (`_clean()` returns `None` for any value containing `{{`). Substituting them
+  does not merely dirty the files, it destroys the tests that defend the
+  guarantee:
+
+  | File / line | Token | Effect of substituting it |
+  |---|---|---|
+  | `tests/test_build_chain_draft.py:341-342` | `{{REPO_ORG}}`, `{{REPO_NAME}}`, `{{RELEASE_DATE}}` | These are the *input* to `test_load_citation_ignores_placeholder_tokens`, which asserts they are rejected as `None`. Real values → the test fails loudly, in the user's fresh repo, looking like the template is broken. |
+  | `tests/test_build_chain_draft.py:85,89` | `{{ZENODO_VERSION_DOI}}`, `{{RELEASE_DATE}}` | These are the draft fixture for `test_placeholder_tokens_in_draft_fences_are_never_emitted`. Substituted, the fixture holds no tokens, so its `assert "{{" not in v` **passes vacuously** — the regression guard against emitting a raw placeholder into a signed nanopub silently stops guarding. |
+  | `tests/test_set_release_identifiers.py`, `scripts/*.py` | `{{ZENODO_DOI}}`, `{{TOKEN}}` | Prose and fixtures about the placeholder contract; substituting is meaningless at best. |
+
+  The second row is the dangerous one: it is a *silent* coverage loss, in every
+  repo built from this template. It is the same failure mode `CLAUDE.md` warns
+  about for the first-run guard ("grepping for `{{...}}` … is exactly what used
+  to cause false-positive skips and silent-green CI"), one directory over.
 
 ```bash
-# Build the file list once, excluding the skill itself
+# Build the file list once. The exclusions are load-bearing — see the table above.
 files=$(grep -rln '{{[A-Z_]\+}}' . \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='*.py' \
   --include='Dockerfile' --include='LICENSE' \
-  2>/dev/null | grep -v '^./.git/' | grep -v '^./.claude/skills/init-template/')
+  2>/dev/null | grep -vE '^\./(\.git|\.claude|tests|scripts)/')
 
 # For each placeholder, sed-replace
 for f in $files; do
@@ -107,7 +138,33 @@ Read `USER_PREFERENCES.md` `add_co_authored_by_claude_trailer` value. If `true`,
 
 ## Step 7 — Verify
 
-Re-run the placeholder-token detection from Step 1. If any tokens remain that should have been substituted (anything other than `{{ZENODO_DOI}}` until first release), report which files still have tokens and ask the user.
+Re-run the scoped survey from Step 1 and confirm nothing unexpected survives.
+Two classes of token are *expected* to remain and must not be reported as
+failures:
+
+- **Release-minted** — `{{ZENODO_DOI}}`, `{{ZENODO_VERSION_DOI}}`, `{{SWHID}}`.
+  Recorded automatically by `.github/workflows/release-identifiers.yml`.
+- **Fixtures** — everything under `tests/`, `scripts/` and `.claude/` (Step 4).
+
+```bash
+grep -rln '{{[A-Z_]\+}}' . \
+  --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' \
+  --include='*.cff' --include='*.toml' --include='*.py' \
+  --include='Dockerfile' --include='LICENSE' 2>/dev/null \
+  | grep -vE '^\./(\.git|\.claude|tests|scripts)/' \
+  | while read -r f; do
+      grep -oE '\{\{[A-Z_]+\}\}' "$f" \
+        | grep -qvE '\{\{(ZENODO_DOI|ZENODO_VERSION_DOI|SWHID)\}\}' && echo "$f"
+    done
+```
+
+Anything this prints is a genuine miss — report it and ask the user.
+
+Then run the test suite. It must be green *after* substitution, not just before:
+
+```bash
+pixi run -e tests test
+```
 
 ## Step 8 — Commit
 
@@ -207,4 +264,5 @@ Tell the user, in this order, with the push reminder loud and unmissable:
 
 - **No git remote** — ask the user; offer to skip GitHub-derived fields and let them fill in manually.
 - **No paper PDF in `paper/`** — non-blocking; tell the user to drop the PDF in before running `/agent paper-analyst`.
-- **Token in a file outside the substitution scope** — report and let the user decide.
+- **Token in a file outside the substitution scope** — report and let the user decide. Do *not* "fix" it by widening the scope to `tests/` or `scripts/`: those tokens are fixtures, and rewriting them silently disables the placeholder-detection tests (Step 4).
+- **`pixi run -e tests test` red after substitution** — a test whose premise was "this repo is an uninitialised template" has been invalidated by your own work. Retarget the test at the invariant it actually meant to defend; do not leave the user's fresh repo with red CI.
