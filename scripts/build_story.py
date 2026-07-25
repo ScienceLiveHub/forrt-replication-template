@@ -39,6 +39,9 @@ UA = {"User-Agent": "curl/8.5.0"}
 # `or` (not a default arg) so an empty env value — e.g. an unset GitHub Actions
 # `vars.SCIENCELIVE_API` — falls back to production rather than becoming "".
 API = os.environ.get("SCIENCELIVE_API") or "https://api.sciencelive4all.org/np/constellation"
+# The platform the "View on Science Live" link points at. Defaults to production;
+# a dev-network replication sets SCIENCELIVE_PLATFORM to its dev host.
+PLATFORM = (os.environ.get("SCIENCELIVE_PLATFORM") or "https://platform.sciencelive4all.org").rstrip("/")
 SPARQL = "https://query.knowledgepixels.com/repo/full"
 
 
@@ -790,7 +793,7 @@ def platform_view_button(uri):
     control the static page cannot honour."""
     if not uri:
         return ""
-    url = "https://platform.sciencelive4all.org/np/?uri=" + urllib.parse.quote(uri, safe="")
+    url = PLATFORM + "/np/?uri=" + urllib.parse.quote(uri, safe="")
     return (f'<a class="btn" href="{esc(url)}" target="_blank" rel="noopener" '
             f'title="Open the live, authoritative version on the Science Live platform">'
             f'&#8599; View on Science Live</a>')
