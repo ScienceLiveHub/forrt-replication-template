@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from set_release_identifiers import (  # noqa: E402
     extract_dois,
     find_zenodo_record,
+    substitute_prose_doi,
     swhid_for,
     update_citation_cff,
     update_codemeta,
@@ -308,3 +309,33 @@ def test_ro_crate_without_root_entity_fails_loudly(tmp_path):
     p = _write(tmp_path, "ro-crate-metadata.json", json.dumps({"@graph": [{"@id": "other"}]}))
     with pytest.raises(SystemExit):
         update_ro_crate(p, "10.5281/zenodo.20811615", swhid_for(COMMIT, ORIGIN), TAG)
+
+
+# --------------------------------------------------------------------------
+# substitute_prose_doi (README.md / index.md badge + link)
+# --------------------------------------------------------------------------
+def test_readme_badge_and_link_get_the_concept_doi(tmp_path):
+    """The DOI badge/link placeholder release-identifiers never used to fill is
+    substituted context-aware: the bare DOI in the Zenodo badge image path, the
+    resolver URL in the markdown link target."""
+    readme = _write(
+        tmp_path,
+        "README.md",
+        "[![DOI](https://zenodo.org/badge/DOI/{{ZENODO_DOI}}.svg)]({{ZENODO_DOI}})\n"
+        "cite: [{{ZENODO_DOI}}]({{ZENODO_DOI}}).\n",
+    )
+    changed = substitute_prose_doi(readme, "10.5281/zenodo.20811614")
+    out = readme.read_text()
+
+    assert changed is True
+    assert "{{ZENODO_DOI}}" not in out
+    assert "badge/DOI/10.5281/zenodo.20811614.svg" in out       # bare DOI in the badge path
+    assert "](https://doi.org/10.5281/zenodo.20811614)" in out  # resolver URL in the link target
+    assert "[10.5281/zenodo.20811614]" in out                   # bare DOI as link text
+
+
+def test_substitute_prose_doi_is_a_safe_noop(tmp_path):
+    """Idempotent, and silent when the file is absent (index.md is optional)."""
+    p = _write(tmp_path, "README.md", "no token here\n")
+    assert substitute_prose_doi(p, "10.5281/zenodo.1") is False          # token already gone
+    assert substitute_prose_doi(tmp_path / "index.md", "10.5281/zenodo.1") is False  # file absent

@@ -263,6 +263,39 @@ def update_ro_crate(path: Path, version_doi: str, swhid: str, tag: str) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
+DOI_TOKEN = "{{ZENODO_DOI}}"
+
+
+def substitute_prose_doi(path: Path, concept_doi: str) -> bool:
+    """Fill the {{ZENODO_DOI}} placeholder in a prose/badge file (README.md,
+    index.md) with the CONCEPT DOI. The token is used in two shapes that need
+    different forms: a Zenodo badge image path wants the BARE DOI, while a
+    markdown link target wants the RESOLVER URL. The metadata writers above only
+    ever touched CITATION.cff / codemeta / ro-crate, so these badges shipped
+    still showing the literal token after the first release — and the FAIR4RS
+    checklist audit excludes the token, so nothing flagged it.
+
+    Returns True if the file changed; a no-op if the file is absent or the token
+    is already gone (so it is safe to re-run and safe when index.md does not
+    exist).
+    """
+    if not path.exists():
+        return False
+    original = path.read_text()
+    url = f"https://doi.org/{concept_doi}"
+    text = (
+        original
+        .replace(f"DOI/{DOI_TOKEN}.svg", f"DOI/{concept_doi}.svg")  # badge image path -> bare DOI
+        .replace(f"[{DOI_TOKEN}]", f"[{concept_doi}]")             # link/label text -> bare DOI
+        .replace(f"({DOI_TOKEN})", f"({url})")                     # markdown link target -> resolver URL
+        .replace(DOI_TOKEN, url)                                   # any remainder -> resolver URL
+    )
+    if text != original:
+        path.write_text(text)
+        return True
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--repo", required=True, help="owner/name")
@@ -296,7 +329,12 @@ def main(argv: list[str] | None = None) -> int:
     update_citation_cff(args.root / "CITATION.cff", version_doi, concept_doi, swhid, args.tag)
     update_codemeta(args.root / "codemeta.json", version_doi, concept_doi, swhid)
     update_ro_crate(args.root / "ro-crate-metadata.json", version_doi, swhid, args.tag)
-    print("\nWrote CITATION.cff, codemeta.json, ro-crate-metadata.json")
+    wrote = ["CITATION.cff", "codemeta.json", "ro-crate-metadata.json"]
+    for name in ("README.md", "index.md"):
+        # the concept DOI is the "cite this project" identity the README badge shows
+        if substitute_prose_doi(args.root / name, concept_doi):
+            wrote.append(name)
+    print("\nWrote " + ", ".join(wrote))
     return 0
 
 
