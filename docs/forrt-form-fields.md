@@ -34,7 +34,7 @@ This checklist exists because it is unreasonably easy to ship a partial draft th
 
 Form heading: *"Annotate a paper quotation — Annotating a paper quotation with personal interpretation"*
 
-> ⚠️ **Quoted Text caps at 500 characters; Comment caps at 800.** Both are hard limits enforced by the template (`nt:hasRegex` `{5,500}` on the quotation, `{5,800}` on the comment). Brevity is still the discipline for the comment — a tight *why this quote matters* beats an 800-char essay — but 500 is not its ceiling; 800 is. If your verbatim quote is longer than 500 chars, switch the radio button to **Quote start/end** mode and use start-phrase + end-phrase to mark a longer span instead of pasting the whole text.
+> ⚠️ **Both the Quoted Text and the Comment cap at 500 characters on the live platform.** The Quoted Text limit is `{5,500}`. The **Comment is enforced at 500 by the live form too**, even though the vendored snapshot regex still reads `{5,800}` — treat **500 as the ceiling** (the snapshot is stale here; re-vendor it with `check_template_drift.py --update`). Brevity is the discipline regardless — a tight *why this quote matters* beats a padded comment. If your verbatim quote is longer than 500 chars, switch the radio button to **Quote start/end** mode and use start-phrase + end-phrase to mark a longer span instead of pasting the whole text.
 
 | Field label | Field type | Notes |
 |---|---|---|
@@ -42,7 +42,7 @@ Form heading: *"Annotate a paper quotation — Annotating a paper quotation with
 | Quote whole text (less than 500 characters) | radio button (default selected) | Mode for quoting a single short passage. The Quoted Text field below must be ≤ 500 chars. |
 | Quote start/end | radio button (alternative) | Alternative mode — two short text inputs for start phrase + end phrase, marking a longer span. Use when the quote is too long for whole-text mode. |
 | Quoted Text | textarea, **required** | The verbatim sentence(s) from the paper. ≤ 500 chars in "Quote whole text" mode. **Must be character-for-character verbatim — see `docs/verify-before-drafting.md`.** |
-| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Use this to explain why the quote matters and what the replication tests. **Hard cap 800 chars** (template regex `{5,800}`); aim well under it — long comments dilute the *why this quote matters* point and read as marketing rather than interpretation. |
+| Comment | textarea, **required** | Subtitle: *"Our interpretation or explanation of why this quotation is relevant."* Explain **why the quotation matters on its own terms** — a standalone interpretation that must be **true independently of any replication**. Do **not** describe the replication, its design, or what it tests: the annotation stands alone and is reused by anyone citing the quote. **Cap 500 chars** (the live form enforces 500, even though the vendored regex reads `{5,800}`); aim well under it — long comments dilute the *why this quote matters* point and read as marketing rather than interpretation. |
 
 Use this template for **paper-rooted chains** where you are testing or extending a sentence from someone else's paper. See `docs/chain-decision-tree.md`.
 
