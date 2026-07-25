@@ -96,14 +96,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- CITATION.cff codemeta.json ro-crate-metadata.json; then
+          if git diff --quiet -- CITATION.cff codemeta.json ro-crate-metadata.json README.md index.md; then
             echo "::notice::Identifiers already recorded for ${{ steps.rev.outputs.tag }} — nothing to commit."
             exit 0
           fi
 
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add CITATION.cff codemeta.json ro-crate-metadata.json
+          git add CITATION.cff codemeta.json ro-crate-metadata.json README.md index.md
           git commit -m "Record ${{ steps.rev.outputs.tag }} identifiers (version DOI + SWHID)"
           git push
           echo "::notice::Recorded ${{ steps.rev.outputs.tag }} identifiers on ${{ github.event.repository.default_branch }}."
