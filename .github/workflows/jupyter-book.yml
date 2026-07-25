@@ -91,16 +91,22 @@ jobs:
           # constellation; unset falls back to production inside the script.
           SCIENCELIVE_API: ${{ vars.SCIENCELIVE_API }}
         run: |
-          if [ -z "$SCIENCELIVE_API_KEY" ]; then
-            echo "::notice::SCIENCELIVE_API_KEY not set — skipping the story page (book deploys without /blog/)."
-            exit 0
+          if [ -n "$SCIENCELIVE_API_KEY" ]; then
+            pixi run -e docs build-story \
+              && echo "::notice::Story page rebuilt from the live network." \
+              || echo "::warning::build-story did not refresh the page (chain not published yet?) — serving the committed blog/ if present."
+          else
+            echo "::notice::SCIENCELIVE_API_KEY not set — serving the committed blog/ if present."
           fi
-          if pixi run -e docs build-story; then
+          # Serve whatever blog/index.html exists (freshly built, or a committed
+          # snapshot) so the page shows even when CI cannot rebuild it. No blog/ at
+          # all (e.g. chain not published) -> the book simply deploys without /blog/.
+          if [ -f blog/index.html ]; then
             mkdir -p _build/html/blog
             cp -r blog/. _build/html/blog/
-            echo "::notice::Story page built — included on the Pages site at /blog/."
+            echo "::notice::Story page included on the Pages site at /blog/."
           else
-            echo "::warning::build-story did not produce a page (chain not published yet?) — deploying the book without /blog/."
+            echo "::notice::No blog/index.html yet — deploying the book without /blog/."
           fi
 
       - name: Upload pages artifact
