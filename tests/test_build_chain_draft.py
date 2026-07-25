@@ -232,6 +232,38 @@ def test_carry_forward_edges_match_the_contract(draft):
     ]
 
 
+# --- second limb via a custom drafts dir (--drafts-dir) ------------------
+
+def test_custom_drafts_dir_builds_a_second_limb(tmp_path):
+    """--drafts-dir points the builder at a sibling drafts set (a second limb)
+    while CITATION.cff / PUBLISHED.md / templates still come from the repo root.
+    Content is read from the alt dir, provenance labels name it, and the default
+    (no drafts_dir) build is unchanged."""
+    root = _fixture_repo(tmp_path)
+    alt = root / "nanopubs" / "drafts-turbidity"
+    alt.mkdir()
+    alt.joinpath("01_quote.md").write_text(
+        QUOTE.replace("Bumblebee species are declining where temperatures exceed historical limits.",
+                      "A distinct second-limb quote sentence."))
+    for s in ("02_aida", "03_claim", "04_study", "05_outcome", "06_citation"):
+        alt.joinpath(f"{s}.md").write_text(f"# {s}\n")
+
+    d = bcd.build_chain_draft(
+        root, repository="https://github.com/annefou/bombus-thermal-replication",
+        commit="abc123", resolve_wikidata=_mock_wikidata, drafts_dir=alt)
+    # content comes from the alt dir...
+    assert _step(d, "01_quote")["prefill"]["quotation"].startswith("A distinct second-limb")
+    # ...and provenance names the alt dir, not the default drafts/
+    assert _step(d, "01_quote")["provenance"]["quotation"] == "nanopubs/drafts-turbidity/01_quote.md"
+
+    # the default build (no drafts_dir) is unchanged
+    d0 = bcd.build_chain_draft(
+        root, repository="https://github.com/annefou/bombus-thermal-replication",
+        commit="abc123", resolve_wikidata=_mock_wikidata)
+    assert _step(d0, "01_quote")["prefill"]["quotation"].startswith("Bumblebee species")
+    assert _step(d0, "01_quote")["provenance"]["quotation"] == "nanopubs/drafts/01_quote.md"
+
+
 # --- metadata routing (CITATION.cff), in the right DOI form --------------
 
 def test_paper_doi_is_bare_on_quote_full_url_elsewhere(draft):
