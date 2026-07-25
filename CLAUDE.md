@@ -161,7 +161,7 @@ The wizard walks the chain in order with every step pre-filled from the draft, y
 
 *Fallback:* if the platform can't reach your `chain-draft.json` (a private repo, or working offline), publish each drafted step by hand in the Science Live UI in chain order, pasting each returned URI into the next step and into `nanopubs/PUBLISHED.md`.
 
-Exit: all six URIs are listed in `nanopubs/PUBLISHED.md`, the Jupyter Book embeds at least one of them, and the chain is browsable from `index.md`. **Then run `/verify-chain`** — it must come back green before the chain is announced.
+Exit: all six URIs are listed in `nanopubs/PUBLISHED.md`, the Jupyter Book embeds at least one of them, and the chain is browsable from `index.md`. Once the chain is published and the ledger is filled, **point the book's TOC in `myst.yml` at `nanopubs/PUBLISHED.md`** (replacing the generic `nanopubs/README.md`) so the published book surfaces the live chain instead of the drafts explainer. **Then run `/verify-chain`** — it must come back green before the chain is announced.
 
 ## Universal anti-patterns (apply across all phases)
 
