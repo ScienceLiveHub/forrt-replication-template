@@ -76,6 +76,33 @@ jobs:
           BASE_URL: /${{ github.event.repository.name }}
         run: pixi run -e docs myst build --html
 
+      # The reader-facing story page (scripts/build_story.py) rides the SAME Pages
+      # site as the book, served at /blog/. Best-effort: it needs the chain to be
+      # published (an apex in nanopubs/PUBLISHED.md) and the SCIENCELIVE_API_KEY
+      # secret, so it is skipped (never fails the book deploy) when either is absent.
+      # Re-running this workflow (Actions → Run workflow) is how you "regenerate"
+      # the blog from the current state of the nanopub network.
+      - name: Generate the reader-facing story page (best-effort)
+        if: steps.guard.outputs.ready == 'true'
+        continue-on-error: true
+        env:
+          SCIENCELIVE_API_KEY: ${{ secrets.SCIENCELIVE_API_KEY }}
+          # Optional: set a repo variable SCIENCELIVE_API to point at a non-prod
+          # constellation; unset falls back to production inside the script.
+          SCIENCELIVE_API: ${{ vars.SCIENCELIVE_API }}
+        run: |
+          if [ -z "$SCIENCELIVE_API_KEY" ]; then
+            echo "::notice::SCIENCELIVE_API_KEY not set — skipping the story page (book deploys without /blog/)."
+            exit 0
+          fi
+          if pixi run -e docs build-story; then
+            mkdir -p _build/html/blog
+            cp -r blog/. _build/html/blog/
+            echo "::notice::Story page built — included on the Pages site at /blog/."
+          else
+            echo "::warning::build-story did not produce a page (chain not published yet?) — deploying the book without /blog/."
+          fi
+
       - name: Upload pages artifact
         if: steps.guard.outputs.ready == 'true'
         uses: actions/upload-pages-artifact@v5

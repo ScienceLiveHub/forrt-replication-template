@@ -61,6 +61,21 @@ The page carries the **Science Live palette itself** (`scripts/story_assets/base
 navy / magenta / blue, the same tokens as `science-live.css`), so it looks like a
 Science Live page on any host; it does not inherit the surrounding site's theme.
 
+## On GitHub Pages, and "regenerating"
+
+`.github/workflows/jupyter-book.yml` builds the story page as part of the Pages
+deploy (best-effort) and serves it at **`/blog/`** on the same site as the Jupyter
+Book — so you don't manage a second deployment. It runs only when the chain is
+published and the `SCIENCELIVE_API_KEY` **repo secret** is set; otherwise the book
+deploys without `/blog/`.
+
+The blog is a **static snapshot**, but the nanopub network is live (new approvals,
+comments, credits, or a superseding nanopub can appear). To **regenerate** it against
+the current network, re-run the workflow: *Actions → Build and Deploy Jupyter Book →
+Run workflow* (or it refreshes on every push to `main`). A static page cannot securely
+trigger CI itself, so the page's toolbar shows a **"View on Science Live"** link to the
+live, authoritative version on the platform rather than a dead "regenerate" button.
+
 ## What it needs in the repository
 
 - `nanopubs/PUBLISHED.md` with the published URIs (Phase 5).

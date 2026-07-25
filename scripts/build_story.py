@@ -36,7 +36,9 @@ import urllib.request
 from pathlib import Path
 
 UA = {"User-Agent": "curl/8.5.0"}
-API = os.environ.get("SCIENCELIVE_API", "https://api.sciencelive4all.org/np/constellation")
+# `or` (not a default arg) so an empty env value — e.g. an unset GitHub Actions
+# `vars.SCIENCELIVE_API` — falls back to production rather than becoming "".
+API = os.environ.get("SCIENCELIVE_API") or "https://api.sciencelive4all.org/np/constellation"
 SPARQL = "https://query.knowledgepixels.com/repo/full"
 
 
@@ -782,6 +784,18 @@ def _limb_view(d):
 
 
 # ------------------------------------------------------------------ render
+def platform_view_button(uri):
+    """This page is a static mirror; the live, regenerable version lives on the
+    Science Live platform. Link there rather than showing a dead 'Regenerate'
+    control the static page cannot honour."""
+    if not uri:
+        return ""
+    url = "https://platform.sciencelive4all.org/np/?uri=" + urllib.parse.quote(uri, safe="")
+    return (f'<a class="btn" href="{esc(url)}" target="_blank" rel="noopener" '
+            f'title="Open the live, authoritative version on the Science Live platform">'
+            f'&#8599; View on Science Live</a>')
+
+
 def render(d, style):
     a, pub, steps = d["a"], d["pub"], d["steps"]
     root = d["root"]
@@ -832,6 +846,7 @@ def render(d, style):
                  f'<a class="u" href="{esc(outcome_uri)}">{esc(outcome_uri)}</a>, that always resolves to '
                  f'the signed record. Citing it credits the replication and its author.</p>'
                  f'</div></details>') if outcome_uri else ""
+    platform_view_btn = platform_view_button(outcome_uri)
 
     cites_items = ""
     for p_, o in d["cites"]:
@@ -909,8 +924,7 @@ def render(d, style):
   <span class="brandmark"><span class="sq"></span> Science Live <span class="sub">&middot; replication story</span></span>
   <span class="tools">
     <a class="btn" href="#cite">&#10077; Cite</a>
-    <span class="hint"><button class="btn" type="button" disabled>&#8635; Regenerate</button>
-      <span class="box" role="tooltip"><strong>Sign in to regenerate</strong>Rebuilds this page from the signed nanopublications. It never changes them.</span></span>
+    {platform_view_btn}
     <button class="btn" type="button" id="tt"><span id="tticon">&#9789;</span> <span id="ttlabel">Dark</span></button>
   </span></div></div>
 
@@ -1208,6 +1222,7 @@ def render_synthesis(syn, style):
                  f'<a class="u" href="{esc(syn["uri"])}">{esc(syn["uri"])}</a>, that always resolves to '
                  f'the signed record. Citing it credits the replication and its author.</p>'
                  f'</div></details>')
+    platform_view_btn = platform_view_button(syn["uri"])
 
     # limb sections — one full-width block each, figure at the hero's width
     cards = ""
@@ -1317,8 +1332,7 @@ def render_synthesis(syn, style):
   <span class="brandmark"><span class="sq"></span> Science Live <span class="sub">&middot; research synthesis</span></span>
   <span class="tools">
     <a class="btn" href="#cite">&#10077; Cite</a>
-    <span class="hint"><button class="btn" type="button" disabled>&#8635; Regenerate</button>
-      <span class="box" role="tooltip"><strong>Sign in to regenerate</strong>Rebuilds this page from the signed nanopublications. It never changes them.</span></span>
+    {platform_view_btn}
     <button class="btn" type="button" id="tt"><span id="tticon">&#9789;</span> <span id="ttlabel">Dark</span></button>
   </span></div></div>
 
