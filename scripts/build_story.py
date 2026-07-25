@@ -786,6 +786,121 @@ def _limb_view(d):
     }
 
 
+# -------------------------------------------------------- audience tabs
+# An OPTIONAL layer. The deterministic "Record" tab is always the page; audience
+# tabs are added only when an audience.json is supplied. That file is produced
+# ONCE at build time by an opt-in AI step (a constrained rewrite of the record's
+# own text for a lay audience) and baked into the static HTML — so the reader
+# spends no tokens and nothing AI-written ever leaks into the Record tab.
+def load_audiences(path):
+    if not path:
+        return []
+    data = json.loads(Path(path).read_text())
+    if not isinstance(data, dict):
+        return data or []
+    auds = data.get("audiences", [])
+    shared = data.get("glance")          # one glance spec, shared by every audience
+    if shared:
+        for a in auds:
+            a.setdefault("glance", shared)
+    return auds
+
+
+# Inlined Font Awesome Free 6.5.1 icons (CC BY 4.0, https://fontawesome.com) — the
+# same icon family the Science Live site uses. Inlined (not a CDN link) so the page
+# stays self-contained. (viewBox, path).
+ICONS = {
+    "file-lines": ("0 0 384 512", "M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM112 256H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16zm0 64H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16zm0 64H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"),
+    "users": ("0 0 640 512", "M144 0a80 80 0 1 1 0 160A80 80 0 1 1 144 0zM512 0a80 80 0 1 1 0 160A80 80 0 1 1 512 0zM0 298.7C0 239.8 47.8 192 106.7 192h42.7c15.9 0 31 3.5 44.6 9.7c-1.3 7.2-1.9 14.7-1.9 22.3c0 38.2 16.8 72.5 43.3 96c-.2 0-.4 0-.7 0H21.3C9.6 320 0 310.4 0 298.7zM405.3 320c-.2 0-.4 0-.7 0c26.6-23.5 43.3-57.8 43.3-96c0-7.6-.7-15-1.9-22.3c13.6-6.3 28.7-9.7 44.6-9.7h42.7C592.2 192 640 239.8 640 298.7c0 11.8-9.6 21.3-21.3 21.3H405.3zM224 224a96 96 0 1 1 192 0 96 96 0 1 1 -192 0zM128 485.3C128 411.7 187.7 352 261.3 352H378.7C452.3 352 512 411.7 512 485.3c0 14.7-11.9 26.7-26.7 26.7H154.7c-14.7 0-26.7-11.9-26.7-26.7z"),
+    "graduation-cap": ("0 0 640 512", "M320 32c-8.1 0-16.1 1.4-23.7 4.1L15.8 137.4C6.3 140.9 0 149.9 0 160s6.3 19.1 15.8 22.6l57.9 20.9C57.3 229.3 48 259.8 48 291.9v28.1c0 28.4-10.8 57.7-22.3 80.8c-6.5 13-13.9 25.8-22.5 37.6C0 442.7-.9 448.3 .9 453.4s6 8.9 11.2 10.2l64 16c4.2 1.1 8.7 .3 12.4-2s6.3-6.1 7.1-10.4c8.6-42.8 4.3-81.2-2.1-108.7C90.3 344.3 86 329.8 80 316.5V291.9c0-30.2 10.2-58.7 27.9-81.5c12.9-15.5 29.6-28 49.2-35.7l157-61.7c8.2-3.2 17.5 .8 20.7 9s-.8 17.5-9 20.7l-157 61.7c-12.4 4.9-23.3 12.4-32.2 21.6l159.6 57.6c7.6 2.7 15.6 4.1 23.7 4.1s16.1-1.4 23.7-4.1L624.2 182.6c9.5-3.4 15.8-12.5 15.8-22.6s-6.3-19.1-15.8-22.6L343.7 36.1C336.1 33.4 328.1 32 320 32zM128 408c0 35.3 86 72 192 72s192-36.7 192-72L496.7 262.6 354.5 314c-11.1 4-22.8 6-34.5 6s-23.5-2-34.5-6L143.3 262.6 128 408z"),
+}
+
+
+def svg_icon(name):
+    spec = ICONS.get(name or "")
+    if not spec:
+        return ""
+    vb, d = spec
+    return (f'<svg class="tab-ico" viewBox="{vb}" aria-hidden="true" focusable="false" '
+            f'fill="currentColor"><path d="{d}"/></svg>')
+
+
+def tab_bar(audiences):
+    tabs = ('<button class="tab active" type="button" data-tab="record">'
+            f'{svg_icon("file-lines")}The record</button>')
+    for a in audiences:
+        icon = svg_icon(a.get("icon"))
+        tabs += (f'<button class="tab" type="button" data-tab="{esc(a["id"])}">'
+                 f'{icon}{esc(a["label"])}</button>')
+    return f'<div class="tabbar" role="tablist">{tabs}</div>'
+
+
+GLANCE_ICON = {"ok": "✓", "warn": "✗", "bad": "✗"}   # ✓ / ✗
+
+
+def glance_card(spec, verdicts):
+    """An 'at a glance' infographic for a lay audience. The lay LABELS come from the
+    audience spec; the row colour and the ✓/✗ come from the signed record's verdicts
+    (zipped in chain order), so the graphic cannot disagree with the science."""
+    items = (spec or {}).get("items") or []
+    rows = ""
+    for item, (vclass, verdict) in zip(items, verdicts):
+        sub = f' <small>({esc(item["sub"])})</small>' if item.get("sub") else ""
+        says = f'<span class="glance-says">{esc(item["says"])}</span>' if item.get("says") else ""
+        rows += (f'<li class="glance-row {esc(vclass)}"><span class="glance-dot"></span>'
+                 f'<span class="glance-label">{esc(item.get("label", ""))}{sub}</span>'
+                 f'{says}<span class="glance-icon" title="{esc(verdict)}">'
+                 f'{GLANCE_ICON.get(vclass, "")}</span></li>')
+    if not rows:
+        return ""
+    title = f'<figcaption class="glance-title">{esc(spec.get("title", ""))}</figcaption>' if spec.get("title") else ""
+    note = f'<p class="glance-note">{esc(spec["note"])}</p>' if spec.get("note") else ""
+    return f'<figure class="glance">{title}<ul class="glance-rows">{rows}</ul>{note}</figure>'
+
+
+def render_audience(aud, verdicts=(), hero=None):
+    """One audience panel: a labelled AI banner, a real (accessible) hero image and
+    an accurate-by-construction 'at a glance' graphic, then the plain-language
+    retelling (title, lead, titled sections, closing) — the words supplied by the
+    build-time AI step, the image and the graphic's colours/ticks from the record."""
+    who = aud.get("label", "a general audience").strip()
+    who = who[4:] if who.lower().startswith("for ") else who
+    level = (f'<p class="aud-level"><span class="aud-i" aria-hidden="true">i</span>'
+             f'Recommended reading level &mdash; {esc(aud["level"])}</p>'
+             if aud.get("level") else "")
+    deck = f'<p class="deck">{esc(aud["lead"])}</p>' if aud.get("lead") else ""
+    # the same real overview figure the Record tab uses — an accessible anchor, no
+    # invented caption (the plain-language cap can be supplied by the AI layer)
+    cap = f'<figcaption>{esc(aud["hero_caption"])}</figcaption>' if aud.get("hero_caption") else ""
+    hero_html = (f'<figure class="fig wide"><img src="{esc(inline_figure(hero[0]))}" '
+                 f'alt="Overview image of the study">{cap}</figure>' if hero else "")
+    glance = glance_card(aud.get("glance"), verdicts)
+    secs = "".join(f'<h2 class="sec">{esc(s.get("h", ""))}</h2>{prose_blocks(s.get("p", ""))}'
+                   for s in aud.get("sections", []))
+    closing = f'<p class="aud-closing">{esc(aud["closing"])}</p>' if aud.get("closing") else ""
+    return (f'<article class="article">'
+            f'<div class="ai-banner"><span class="ai-tag">AI-generated summary</span>'
+            f'A plain-language retelling for {esc(who)}, written by an AI from the verified '
+            f'record. It simplifies and never overrides the signed science. '
+            f'<a href="#" data-goto="record">Read the full record &rarr;</a></div>'
+            f'<p class="eyebrow">Plain-language summary</p>'
+            f'<h1>{esc(aud.get("title", ""))}</h1>{level}{deck}{hero_html}{glance}{secs}{closing}</article>')
+
+
+def tabs_wrap(audiences, verdicts=(), hero=None):
+    """(open, close) markup to wrap the record article in a tab shell. Empty when
+    there are no audiences, so a page with none is byte-identical to before.
+    `verdicts` is the record's per-limb (vclass, verdict) for the glance graphic;
+    `hero` is the record's overview figure, reused as each audience tab's image."""
+    if not audiences:
+        return "", ""
+    open_ = tab_bar(audiences) + '<div class="tabpanel active" data-panel="record">'
+    close = '</div>' + "".join(
+        f'<div class="tabpanel" data-panel="{esc(a["id"])}">{render_audience(a, verdicts, hero)}</div>'
+        for a in audiences)
+    return open_, close
+
+
 # ------------------------------------------------------------------ render
 def platform_view_button(uri):
     """This page is a static mirror; the live, regenerable version lives on the
@@ -799,7 +914,7 @@ def platform_view_button(uri):
             f'&#8599; View on Science Live</a>')
 
 
-def render(d, style):
+def render(d, style, audiences=()):
     a, pub, steps = d["a"], d["pub"], d["steps"]
     root = d["root"]
     claim, study, out = a.get("Claim", {}), a.get("Study", {}), a.get("Outcome", {})
@@ -816,6 +931,7 @@ def render(d, style):
     # --- the same credit/provenance treatment as the synthesis page ---
     outcome_uri = steps.get("Outcome", {}).get("uri", "")
     vclass = VERDICT_CLASS.get(re.sub(r"\s+", "", verdict.lower()), "ok") if verdict else "ok"
+    tabbar_open, panels_close = tabs_wrap(audiences, [(vclass, verdict)] if verdict else [])
     # verdict + confidence chips link to the Outcome nanopublication that asserts them
     if verdict:
         vchip = (f'<a class="verdict {vclass}" href="{esc(outcome_uri)}" '
@@ -931,6 +1047,7 @@ def render(d, style):
     <button class="btn" type="button" id="tt"><span id="tticon">&#9789;</span> <span id="ttlabel">Dark</span></button>
   </span></div></div>
 
+{tabbar_open}
 <article class="article">
   <header class="head">
     <div class="headtop">
@@ -1003,6 +1120,7 @@ def render(d, style):
     <span>Generated from {len(d["order"])} signed nanopublications &middot; verdict, responses and credits read live from the network.</span>
   </footer>
 </article>
+{panels_close}
 <script>
 (function(){{var r=document.documentElement,b=document.getElementById('tt'),
 i=document.getElementById('tticon'),l=document.getElementById('ttlabel');
@@ -1027,11 +1145,73 @@ Array.prototype.forEach.call(document.querySelectorAll('.copybtn'),function(btn)
   var el=document.getElementById(a.getAttribute('href').slice(1));
   if(el&&el.tagName==='DETAILS')el.open=true;
 }});}})();
+(function(){{
+  var tabs=document.querySelectorAll('.tab'),panels=document.querySelectorAll('.tabpanel');
+  if(!tabs.length)return;
+  function show(id){{
+    tabs.forEach(function(t){{t.classList.toggle('active',t.getAttribute('data-tab')===id);}});
+    panels.forEach(function(p){{p.classList.toggle('active',p.getAttribute('data-panel')===id);}});
+    try{{scrollTo({{top:0}});}}catch(e){{}}
+  }}
+  tabs.forEach(function(t){{t.addEventListener('click',function(){{show(t.getAttribute('data-tab'));}});}});
+  document.addEventListener('click',function(e){{
+    var g=e.target.closest&&e.target.closest('[data-goto]');
+    if(g){{e.preventDefault();show(g.getAttribute('data-goto'));}}
+  }});
+}})();
 </script>
 """
 
 
 SYNTH_CSS = """<style>
+/* audience tabs — the Record tab is the deterministic page; audience tabs are
+   the opt-in AI layer, clearly banner-labelled */
+.tabbar{display:flex;gap:.15rem;flex-wrap:wrap;max-width:var(--col);margin:1.3rem auto 0;
+  padding:0 var(--gutter);border-bottom:1px solid var(--hairline);}
+.tab{display:inline-flex;align-items:center;gap:.45rem;font-family:var(--sans);font-size:.9rem;
+  font-weight:600;color:var(--muted);background:transparent;border:none;
+  border-bottom:2.5px solid transparent;padding:.55rem .9rem;margin-bottom:-1px;cursor:pointer;}
+.tab-ico{width:.95em;height:.95em;flex:none;}
+.tab:hover{color:var(--ink);}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand);}
+.tabpanel{display:none;}
+.tabpanel.active{display:block;}
+.ai-banner{margin:1.6rem 0 .4rem;padding:.9rem 1.1rem;background:var(--accent-dim);
+  border:1px solid var(--accent);border-radius:10px;font-family:var(--sans);font-size:.88rem;
+  line-height:1.5;color:var(--ink);}
+.ai-tag{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#fff;background:var(--accent);border-radius:999px;padding:.14rem .55rem;margin-right:.5rem;}
+.ai-banner a{color:var(--accent);font-weight:700;white-space:nowrap;}
+.aud-closing{margin:1.7rem 0;font-family:var(--serif);font-size:1.2rem;font-weight:600;line-height:1.4;
+  border-left:4px solid var(--brand);padding-left:1.1rem;color:var(--ink);}
+.aud-level{display:flex;align-items:center;gap:.5rem;font-family:var(--sans);font-size:.85rem;
+  color:var(--muted);margin:-.4rem 0 1.3rem;padding:.55rem .8rem;background:var(--sunken);
+  border-radius:8px;}
+.aud-i{flex:none;width:1.15rem;height:1.15rem;border-radius:50%;background:var(--accent);color:#fff;
+  font-family:var(--serif);font-style:italic;font-weight:700;font-size:.8rem;line-height:1.15rem;
+  text-align:center;}
+/* "at a glance" infographic — colours + ticks come from the record's verdicts */
+.glance{margin:1.4rem 0 1.6rem;border:1px solid var(--hairline);border-radius:12px;
+  padding:1.2rem 1.4rem;background:var(--surface);}
+.glance-title{font-family:var(--sans);font-size:.74rem;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 .8rem;}
+.glance-rows{list-style:none;margin:0;padding:0;}
+.glance-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;
+  border-top:1px solid var(--hairline);font-family:var(--sans);}
+.glance-row:first-child{border-top:none;}
+.glance-dot{width:.85rem;height:.85rem;border-radius:50%;flex:none;}
+.glance-row.ok .glance-dot{background:var(--ok);} .glance-row.warn .glance-dot{background:var(--warn);}
+.glance-row.bad .glance-dot{background:var(--bad);}
+.glance-label{font-size:1.05rem;font-weight:600;color:var(--ink);flex:1;}
+.glance-label small{font-weight:400;color:var(--muted);font-size:.85rem;}
+.glance-says{font-size:.92rem;font-weight:600;}
+.glance-row.ok .glance-says{color:var(--ok);} .glance-row.warn .glance-says{color:var(--warn);}
+.glance-row.bad .glance-says{color:var(--bad);}
+.glance-icon{font-size:1.15rem;font-weight:700;width:1.3rem;text-align:center;flex:none;}
+.glance-row.ok .glance-icon{color:var(--ok);} .glance-row.warn .glance-icon{color:var(--warn);}
+.glance-row.bad .glance-icon{color:var(--bad);}
+.glance-note{font-family:var(--sans);font-size:.9rem;color:var(--muted);margin:.9rem 0 0;
+  font-style:italic;line-height:1.45;}
 /* the info popup is nested in .eyebrow and inherits its uppercasing — reset the
    body to normal case, keep only the tooltip title uppercase */
 .eyebrow .box{text-transform:none;}
@@ -1136,7 +1316,7 @@ details.limbmore .cbody{margin:.6rem 0 0;font-size:.95rem;line-height:1.55;}
 </style>"""
 
 
-def render_synthesis(syn, style):
+def render_synthesis(syn, style, audiences=()):
     rs, limbs = syn["rs"], syn["limbs"]
     name, _, _ = citation_parts(syn["uri"], syn["pub"], syn["a"])
     creator = one(syn["pub"], "creator") or ""
@@ -1171,6 +1351,8 @@ def render_synthesis(syn, style):
         + src_bits + '</div></div>') if (orig_claim or doi) else ""
 
     views = [_limb_view(d) for d in limbs]
+    tabbar_open, panels_close = tabs_wrap(
+        audiences, [(v["vclass"], v["verdict"]) for v in views], syn.get("hero"))
 
     # hero: one coloured pill per limb — its CiTO relation and verdict. The pill
     # links to the CiTO citation nanopublication that signs the confirms/qualifies
@@ -1339,6 +1521,7 @@ def render_synthesis(syn, style):
     <button class="btn" type="button" id="tt"><span id="tticon">&#9789;</span> <span id="ttlabel">Dark</span></button>
   </span></div></div>
 
+{tabbar_open}
 <article class="article">
   <header class="head">
     <div class="headtop">
@@ -1398,6 +1581,7 @@ def render_synthesis(syn, style):
     <span>Composed from {total_np} signed nanopublications across {len(limbs)} chains &middot; verdicts, responses and credits read live from the network.</span>
   </footer>
 </article>
+{panels_close}
 <script>
 (function(){{var r=document.documentElement,b=document.getElementById('tt'),
 i=document.getElementById('tticon'),l=document.getElementById('ttlabel');
@@ -1422,6 +1606,20 @@ Array.prototype.forEach.call(document.querySelectorAll('.copybtn'),function(btn)
   var el=document.getElementById(a.getAttribute('href').slice(1));
   if(el&&el.tagName==='DETAILS')el.open=true;
 }});}})();
+(function(){{
+  var tabs=document.querySelectorAll('.tab'),panels=document.querySelectorAll('.tabpanel');
+  if(!tabs.length)return;
+  function show(id){{
+    tabs.forEach(function(t){{t.classList.toggle('active',t.getAttribute('data-tab')===id);}});
+    panels.forEach(function(p){{p.classList.toggle('active',p.getAttribute('data-panel')===id);}});
+    try{{scrollTo({{top:0}});}}catch(e){{}}
+  }}
+  tabs.forEach(function(t){{t.addEventListener('click',function(){{show(t.getAttribute('data-tab'));}});}});
+  document.addEventListener('click',function(e){{
+    var g=e.target.closest&&e.target.closest('[data-goto]');
+    if(g){{e.preventDefault();show(g.getAttribute('data-goto'));}}
+  }});
+}})();
 </script>
 """
 
@@ -1454,6 +1652,9 @@ def main(argv=None):
     p.add_argument("--repo-root", default=".", help="Repository root (default: cwd).")
     p.add_argument("-o", "--out", default=None,
                    help="Output HTML file (default: <repo-root>/blog/index.html).")
+    p.add_argument("--audience", default=None,
+                   help="Optional audience.json adding AI-enhanced tabs (schools, citizens, …). "
+                        "Default: nanopubs/audience.json if it exists.")
     args = p.parse_args(argv)
 
     root = Path(args.repo_root).resolve()
@@ -1464,11 +1665,17 @@ def main(argv=None):
     out = Path(args.out) if args.out else (root / "blog" / "index.html")
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    audience_path = args.audience
+    if not audience_path:
+        default_aud = root / "nanopubs" / "audience.json"
+        audience_path = str(default_aud) if default_aud.exists() else None
+    audiences = load_audiences(audience_path)
+
     style = load_style()
     con = fetch_con(entry)
     if con.get("researchSynthesis"):
         syn = build_synthesis(entry, con)
-        out.write_text(render_synthesis(syn, style))
+        out.write_text(render_synthesis(syn, style, audiences))
         has_figure = bool(syn.get("hero")) or any(d.get("figure") for d in syn["limbs"])
         print(f"wrote {out}  [research synthesis, {len(syn['limbs'])} "
               f"{'limb' if len(syn['limbs']) == 1 else 'limbs'}]")
@@ -1477,7 +1684,7 @@ def main(argv=None):
                   f"{v['confidence'] or '?'} | fig={bool(v['figure'])} | {v['heading'][:55]}")
     else:
         d = build(entry, con)
-        out.write_text(render(d, style))
+        out.write_text(render(d, style, audiences))
         has_figure = bool(d.get("figure"))
         print(f"wrote {out}  [replication chain]")
         print("  steps  :", [k for k, _ in d["order"]])

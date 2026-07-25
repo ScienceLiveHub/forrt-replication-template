@@ -61,6 +61,27 @@ The page carries the **Science Live palette itself** (`scripts/story_assets/base
 navy / magenta / blue, the same tokens as `science-live.css`), so it looks like a
 Science Live page on any host; it does not inherit the surrounding site's theme.
 
+## Optional: audience tabs (plain-language "For citizens" / "For schools")
+
+The page can carry extra **tabs** that retell the science for a lay audience. This is
+an opt-in layer on top of the deterministic **"The record"** tab (which is always the
+default and never changes):
+
+- If `nanopubs/audience.json` exists, the generator adds one tab per audience, each
+  banner-labelled *AI-generated* and carrying its recommended reading level.
+- If it does not exist, the page is exactly the single Record tab — no tabs.
+
+`audience.json` is produced **once, at build time**, by an opt-in AI step — the
+[`audience-writer`](../.claude/agents/audience-writer.md) agent — as a constrained,
+plain-language *rewrite of the record's own text*. It is baked into the static HTML,
+so **the reader spends no tokens** and nothing AI-written can leak into the Record tab.
+Copy `nanopubs/audience.json.example` to see the shape, or run the agent. The "at a
+glance" infographic takes its colours and ✓/✗ from the signed verdicts (only the lay
+labels come from the AI), so it is accurate by construction.
+
+Tab icons are inlined Font Awesome (CC BY 4.0) — the same family as the Science Live
+site — so the page stays self-contained.
+
 ## On GitHub Pages, and "regenerating"
 
 `.github/workflows/jupyter-book.yml` builds the story page as part of the Pages

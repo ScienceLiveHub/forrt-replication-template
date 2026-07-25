@@ -131,3 +131,36 @@ def test_apex_from_published_falls_back_to_outcome(tmp_path):
 
 def test_apex_from_published_none_when_missing(tmp_path):
     assert bs.apex_from_published(tmp_path) is None
+
+
+def test_load_audiences_attaches_shared_glance(tmp_path):
+    p = tmp_path / "audience.json"
+    p.write_text('{"glance": {"items": [{"label": "X"}]}, '
+                 '"audiences": [{"id": "citizens", "label": "For citizens"}]}')
+    auds = bs.load_audiences(str(p))
+    assert auds[0]["id"] == "citizens"
+    # the one shared glance is attached to each audience for rendering
+    assert auds[0]["glance"]["items"][0]["label"] == "X"
+
+
+def test_load_audiences_empty_when_no_path():
+    assert bs.load_audiences(None) == []
+
+
+def test_glance_card_takes_colour_from_record_not_ai():
+    spec = {"title": "T", "items": [{"label": "Muddiness", "says": "reliable"},
+                                    {"label": "Algae", "says": "unreliable"}]}
+    # verdicts (vclass, verdict) come from the signed record, zipped in limb order
+    html = bs.glance_card(spec, [("ok", "Validated"), ("warn", "PartiallySupported")])
+    assert '<li class="glance-row ok">' in html and '<li class="glance-row warn">' in html
+    assert "✓" in html and "✗" in html          # icon derives from vclass, not the AI text
+    # more labels than verdicts -> only the verdict-backed rows render (no orphan rows)
+    one = bs.glance_card(spec, [("ok", "Validated")])
+    assert one.count('<li class="glance-row') == 1
+
+
+def test_tab_bar_and_svg_icon():
+    bar = bs.tab_bar([{"id": "schools", "label": "For schools", "icon": "graduation-cap"}])
+    assert 'data-tab="record"' in bar and 'data-tab="schools"' in bar
+    assert bar.count("<svg") == 2                # record (file-lines) + schools (graduation-cap)
+    assert bs.svg_icon("nonexistent-icon") == ""  # unknown name -> no icon, no crash
