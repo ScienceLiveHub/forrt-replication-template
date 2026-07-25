@@ -72,6 +72,24 @@ def test_guidance_and_drafted_values_survive_regeneration():
     assert "Thermal exposure predicts extirpation" in out
 
 
+def test_ticked_restricted_choice_survives_regeneration():
+    """A drafter's `[x]` selection is a human choice that build_chain_draft reads
+    to pre-fill the wizard; render must carry it over, not reset the list to
+    blank. Regression for the bug where every option came back unticked."""
+    body = SNAPSHOT["steps"]["03_claim"]
+    drafted = (
+        "# 03 — FORRT Claim\n\n## Field-by-field draft\n\n"
+        "<!-- field: forrtType -->\n"
+        "### Type of FORRT claim (dropdown, required)\n\n"
+        "- [x] model performance (accuracy, F1 score, evaluation metrics)\n"
+    )
+    out, _, _ = sync.render("03_claim", body, drafted)
+    assert "- [x] model performance (accuracy, F1 score, evaluation metrics)" in out
+    assert out.count("- [x] ") == 1          # exactly the chosen option, nothing else
+    twice, _, _ = sync.render("03_claim", body, out)
+    assert twice == out                      # ...and it stays a fixed point
+
+
 def test_a_section_it_cannot_place_is_kept_not_dropped():
     """Losing a researcher's writing to a parsing miss would be worse than the
     drift this fixes, so an unrecognised section is preserved and reported."""

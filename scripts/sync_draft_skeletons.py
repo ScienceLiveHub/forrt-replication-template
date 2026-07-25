@@ -101,10 +101,20 @@ def heading_for(step_id: str, field: dict) -> str:
     return f"### {label} ({hint}, {req})"
 
 
-def options_for(field: dict) -> list[str]:
-    """Checkbox list for a restricted-choice field, from the template vocabulary."""
-    values = field.get("possible_values") or []
-    return [f"- [ ] {v['label'] if isinstance(v, dict) else v}" for v in values]
+def options_for(field: dict, ticked: set[str] | None = None) -> list[str]:
+    """Checkbox list for a restricted-choice field, from the template vocabulary.
+
+    Options whose label was already ticked stay ticked: the selection is a human
+    choice that build_chain_draft reads to pre-fill the wizard, not template text
+    to redraw blank. Labels are matched normalised, so a cosmetic difference
+    (parentheticals, case) does not lose the tick."""
+    ticked = ticked or set()
+    out = []
+    for v in field.get("possible_values") or []:
+        label = v["label"] if isinstance(v, dict) else v
+        mark = "x" if _norm(label) in ticked else " "
+        out.append(f"- [{mark}] {label}")
+    return out
 
 
 def split_draft(text: str) -> tuple[list[str], list[dict], list[str]]:
@@ -216,11 +226,18 @@ def render(step_id: str, body: dict, draft_text: str) -> tuple[str, list[str], l
         out += ["", f"<!-- field: {field['id']} -->", heading_for(step_id, field)]
         kept = list(section["body"])
         if field["kind"] == "restricted_choice" and options_for(field):
-            # the vocabulary belongs to the template; keep the prose, redraw the list
-            kept = [ln for ln in kept if not re.match(r"^- \[[ x]\] ", ln)]
+            # the vocabulary belongs to the template; keep the prose AND the
+            # drafter's tick, redraw the list. The tick is a human choice
+            # build_chain_draft reads — preserve it like a fenced value.
+            ticked = {
+                _norm(m.group(1))
+                for ln in kept
+                if (m := re.match(r"^- \[[xX]\] (.+)$", ln))
+            }
+            kept = [ln for ln in kept if not re.match(r"^- \[[ xX]\] ", ln)]
             while kept and not kept[-1].strip():
                 kept.pop()
-            kept += [""] + options_for(field)
+            kept += [""] + options_for(field, ticked)
         out += _trim(kept)
 
     placed = {f["id"] for f in owner.values()}
