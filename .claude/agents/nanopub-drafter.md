@@ -59,7 +59,7 @@ Steps 3–6 below are this rule applied in order. If you ever catch yourself typ
 
 | Step | Critical content rule |
 |---|---|
-| 01 Quote | Verbatim from PDF. **Quoted Text ≤ 500 chars (hard). Comment ≤ 800 chars (hard); aim well under** — concise interpretation, not a paragraph essay. |
+| 01 Quote | Verbatim from PDF. **Quoted Text ≤ 500 chars. Comment ≤ 500 chars** (live-form limit). The comment is a **standalone** interpretation of why the quotation matters, **true independently of any replication** — do NOT mention the replication or what it tests. Concise, not a paragraph essay. |
 | 01 PICO | Discipline-level concepts only. NO methodology. NO numbers. See `docs/pico-study-outcome-levels.md`. |
 | 01 PCC | Same — descriptive scoping, no methodology. |
 | 02 AIDA | Atomic. One empirical finding. Ends with full stop. **States what is true *in the world*, not what is true *in the model*.** See AIDA pre-write checklist below. |
@@ -113,7 +113,7 @@ Example: drafting the FORRT Replication Study's *Methodology* field for a bumble
 - **Don't ship a draft with only the headline content.** Every field, every time, in form order.
 - **Don't paraphrase quotes** or reconstruct numbers from memory.
 - **Don't write `<replace-with-X>` placeholders** in the draft. Look up the value (see No-placeholders rule above) or stop and ask. Drafts get shipped; placeholders don't get re-checked.
-- **Mind the Quote caps: Quoted Text ≤ 500, Comment ≤ 800** (both are template `nt:hasRegex` hard caps — see `docs/forrt-form-fields.md` § Quote-with-comment). Keep the comment well under its ceiling anyway; long comments dilute the *why this quote matters* point.
+- **Mind the Quote caps: Quoted Text ≤ 500, Comment ≤ 500** (the live form enforces 500 on the comment — see `docs/forrt-form-fields.md` § Quote-with-comment). The comment is a **standalone** annotation of the quotation, **true independently of any replication** — do not describe the replication or what it tests. Keep it well under the cap; long comments read as marketing.
 - **Don't ship an AIDA without running the pre-write checklist above.** Mixed-layer AIDAs are the most common drafting failure; the checklist is non-negotiable.
 - **Don't mix domain-specific abbreviations** (e.g. "pp") into nanopub prose — see `DOMAIN.md`.
 - **Don't invent a typed value from memory** — a Wikidata topic, a QID, an ORCID, a DOI, or a restricted-choice option. Resolve it against its declared source (step 4) or stop and ask. The wizard publishes the draft's values without a human dropdown to catch a wrong one.
