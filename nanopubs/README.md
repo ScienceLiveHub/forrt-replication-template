@@ -16,6 +16,7 @@ A complete FORRT chain is six steps published in order. **Step 1 has three alter
 | 4 | `drafts/04_study.md` | FORRT Replication Study |
 | 5 | `drafts/05_outcome.md` | FORRT Replication Outcome |
 | 6 | `drafts/06_citation.md` | CiTO Citation |
+| 9 (optional, spatial papers) | `drafts/09_geo_coverage.md` | Document geographical coverage |
 
 Once the chain shape is decided, delete the two step-1 alternatives you aren't using:
 

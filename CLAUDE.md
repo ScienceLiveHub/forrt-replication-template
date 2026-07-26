@@ -76,6 +76,7 @@ This phase has two valid entry points; choose based on whether the upstream pape
 - The **headline claim sentence** has been quoted verbatim from the paper into `nanopubs/drafts/01_quote.md`. This is the sentence the replication will test or extend. Verbatim means character-for-character; paraphrase is forbidden (`docs/verify-before-drafting.md`).
 - A short **methodology summary** has been written into `nanopubs/drafts/00_paper_summary.md`: data sources, statistical model, sample sizes, headline numerical result.
 - The replication's **design choice** has been recorded: are we doing a Reproduction Study (same data, same methods), a Replication Study (different data and/or different methods), or both?
+- **(Optional, if the paper is spatial)** the original paper's **geographic study area** has been captured into `nanopubs/drafts/09_geo_coverage.md` — the area name plus a verbatim supporting quote — so it can be published as a Geographical coverage nanopub (GeoSPARQL-searchable, map-renderable). This is grounded Record-side extraction, not AI content; skip it cleanly for non-spatial papers. See `docs/geo-coverage.md`.
 
 Hand the user the `paper-analyst` agent (`.claude/agents/paper-analyst.md`) when starting this phase.
 
@@ -224,6 +225,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Verify a published FORRT chain's internal + external consistency | `/verify-chain` skill (`.claude/skills/verify-chain/SKILL.md`) |
 | Deposit the work as a Rohub Research Object | `docs/rohub-deposit.md` + `scripts/build-rohub-manifest.py` |
 | Seed Phase 1 from a published nanopub URI (instead of a paper PDF) | `/import-from-nanopub` skill (`.claude/skills/import-from-nanopub/SKILL.md`) + `docs/nanopub-chain-discovery.md` |
+| Record the paper's geographic study area (optional, spatial papers) | `docs/geo-coverage.md` + `nanopubs/drafts/09_geo_coverage.md` |
 
 ## When in doubt
 
