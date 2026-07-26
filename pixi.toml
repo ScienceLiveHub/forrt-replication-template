@@ -23,6 +23,9 @@ xarray = ">=2024.6"
 scipy = "*"
 matplotlib = "*"
 pyarrow = "*"
+# Pillow downscales + base64-inlines the headline figure into the reader-facing
+# story page (scripts/build_story.py), so the generated HTML is self-contained.
+pillow = "*"
 # --- notebook execution + Jupyter Book ---
 jupytext = "*"
 jupyterlab = "*"
@@ -91,3 +94,10 @@ check-templates = "python scripts/check_template_drift.py"
 # Claude. See docs/chain-draft-contract.md. Run after drafting, then commit the file.
 build-chain-draft = "python scripts/build_chain_draft.py"
 sync-drafts = "python scripts/sync_draft_skeletons.py"
+# Generates the reader-facing story page (blog/index.html) from the PUBLISHED
+# chain: fetches the constellation for the apex in nanopubs/PUBLISHED.md (the
+# Research Synthesis if published, else the Replication Outcome) and renders a
+# self-contained HTML article — nothing invented, every value from the signed
+# nanopubs. Needs SCIENCELIVE_API_KEY. Deterministic: commit blog/ and publish
+# it wherever the repo already publishes (e.g. GitHub Pages). See docs/story-page.md.
+build-story = "python scripts/build_story.py"

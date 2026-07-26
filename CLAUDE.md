@@ -163,6 +163,8 @@ The wizard walks the chain in order with every step pre-filled from the draft, y
 
 Exit: all six URIs are listed in `nanopubs/PUBLISHED.md`, the Jupyter Book embeds at least one of them, and the chain is browsable from `index.md`. Once the chain is published and the ledger is filled, **point the book's TOC in `myst.yml` at `nanopubs/PUBLISHED.md`** (replacing the generic `nanopubs/README.md`) so the published book surfaces the live chain instead of the drafts explainer. **Then run `/verify-chain`** — it must come back green before the chain is announced.
 
+Optionally, generate the **reader-facing story page** — a self-contained HTML article built deterministically from the published chain (`pixi run build-story`, see `docs/story-page.md`) — and publish it alongside the Jupyter Book (e.g. GitHub Pages). It works for a single chain or a research synthesis, and like `build-chain-draft` it runs off Claude's tokens.
+
 ## Universal anti-patterns (apply across all phases)
 
 These rules apply regardless of domain. Domain-specific anti-patterns live in `DOMAIN.md`.
@@ -207,6 +209,7 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 |---|---|
 | Draft any nanopub field | `docs/forrt-form-fields.md` |
 | Publish the chain (draft → wizard) | `docs/chain-draft-contract.md` + `pixi run build-chain-draft` |
+| Build the reader-facing story page (blog) from the published chain | `docs/story-page.md` + `pixi run build-story` |
 | Decide which template starts the chain | `docs/chain-decision-tree.md` |
 | Choose the FORRT Claim type | `docs/claim-type-vocabulary.md` |
 | Write the Quote, Study, or Outcome | `docs/verify-before-drafting.md` |

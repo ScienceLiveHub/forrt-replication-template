@@ -76,6 +76,39 @@ jobs:
           BASE_URL: /${{ github.event.repository.name }}
         run: pixi run -e docs myst build --html
 
+      # The reader-facing story page (scripts/build_story.py) rides the SAME Pages
+      # site as the book, served at /blog/. Best-effort: it needs the chain to be
+      # published (an apex in nanopubs/PUBLISHED.md) and the SCIENCELIVE_API_KEY
+      # secret, so it is skipped (never fails the book deploy) when either is absent.
+      # Re-running this workflow (Actions → Run workflow) is how you "regenerate"
+      # the blog from the current state of the nanopub network.
+      - name: Generate the reader-facing story page (best-effort)
+        if: steps.guard.outputs.ready == 'true'
+        continue-on-error: true
+        env:
+          SCIENCELIVE_API_KEY: ${{ secrets.SCIENCELIVE_API_KEY }}
+          # Optional: set a repo variable SCIENCELIVE_API to point at a non-prod
+          # constellation; unset falls back to production inside the script.
+          SCIENCELIVE_API: ${{ vars.SCIENCELIVE_API }}
+        run: |
+          if [ -n "$SCIENCELIVE_API_KEY" ]; then
+            pixi run -e docs build-story \
+              && echo "::notice::Story page rebuilt from the live network." \
+              || echo "::warning::build-story did not refresh the page (chain not published yet?) — serving the committed blog/ if present."
+          else
+            echo "::notice::SCIENCELIVE_API_KEY not set — serving the committed blog/ if present."
+          fi
+          # Serve whatever blog/index.html exists (freshly built, or a committed
+          # snapshot) so the page shows even when CI cannot rebuild it. No blog/ at
+          # all (e.g. chain not published) -> the book simply deploys without /blog/.
+          if [ -f blog/index.html ]; then
+            mkdir -p _build/html/blog
+            cp -r blog/. _build/html/blog/
+            echo "::notice::Story page included on the Pages site at /blog/."
+          else
+            echo "::notice::No blog/index.html yet — deploying the book without /blog/."
+          fi
+
       - name: Upload pages artifact
         if: steps.guard.outputs.ready == 'true'
         uses: actions/upload-pages-artifact@v5
