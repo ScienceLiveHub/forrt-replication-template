@@ -1038,7 +1038,6 @@ def render(d, style, audiences=()):
     return f"""<title>Replication story &mdash; generated</title>
 {style}
 {SYNTH_CSS}
-<div class="mockbar">Aggregated from the platform's per-nanopublication displays &middot; nothing invented</div>
 <div class="toolbar"><div class="inner">
   <span class="brandmark"><span class="sq"></span> Science Live <span class="sub">&middot; replication story</span></span>
   <span class="tools">
@@ -1512,7 +1511,6 @@ def render_synthesis(syn, style, audiences=()):
     return f"""<title>Research synthesis &mdash; generated</title>
 {style}
 {SYNTH_CSS}
-<div class="mockbar">Aggregated from the platform's per-nanopublication displays &middot; nothing invented</div>
 <div class="toolbar"><div class="inner">
   <span class="brandmark"><span class="sq"></span> Science Live <span class="sub">&middot; research synthesis</span></span>
   <span class="tools">
