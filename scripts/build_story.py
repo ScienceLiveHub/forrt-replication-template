@@ -806,6 +806,51 @@ def load_audiences(path):
     return auds
 
 
+def fetch_published_summaries(apex):
+    """The audience tabs, sourced from the *network* instead of a local file: any
+    AI plain-language summary nanopub published `schema:about` this apex (see the
+    AI-summary template). Each is a signed, agent-attributed nanopublication, so the
+    tab links back to it. Returns [] on any network error, so the caller falls back
+    to a committed audience.json. One (latest, live) summary per audience."""
+    if not apex:
+        return []
+    q = f"""PREFIX schema: <https://schema.org/>
+PREFIX npa: <http://purl.org/nanopub/admin/>
+PREFIX npx: <http://purl.org/nanopub/x/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?np ?audience ?text ?audLabel ?isEdu ?date WHERE {{
+  GRAPH ?a {{ ?s schema:about <{apex}> ; schema:audience ?audience ; rdfs:comment ?text . }}
+  GRAPH npa:graph {{ ?np npa:hasGraph ?a ; dct:created ?date . }}
+  FILTER NOT EXISTS {{ ?inv npx:invalidates ?np . }}
+  FILTER NOT EXISTS {{ ?sup npx:supersedes ?np . }}
+  OPTIONAL {{ GRAPH ?va {{ ?audience rdfs:label ?audLabel . }} }}
+  OPTIONAL {{ GRAPH ?vt {{ ?audience a schema:EducationalAudience . BIND(true AS ?isEdu) }} }}
+}} ORDER BY DESC(?date)"""
+    try:
+        rows = sparql(q)
+    except Exception:
+        return []
+    seen, out = set(), []
+    for r in rows:
+        aud = r["audience"]["value"]
+        if aud in seen:                              # one (latest) per audience term
+            continue
+        seen.add(aud)
+        raw = (r.get("audLabel") or {}).get("value", "")
+        label = raw.split(" - ", 1)[0].strip() or aud.rstrip("/").rsplit("/", 1)[-1]
+        slug = re.sub(r"[^a-z0-9]+", "-", aud.rstrip("/").rsplit("/", 1)[-1].lower()).strip("-")
+        out.append({
+            "id": slug or "audience",
+            "label": label,
+            "icon": "graduation-cap" if "isEdu" in r else "users",
+            # the signed nanopub's rdfs:comment is flat prose — render as one section
+            "sections": [{"h": "", "p": r["text"]["value"]}],
+            "np_uri": r["np"]["value"],
+        })
+    return out
+
+
 # Inlined Font Awesome Free 6.5.1 icons (CC BY 4.0, https://fontawesome.com) — the
 # same icon family the Science Live site uses. Inlined (not a CDN link) so the page
 # stays self-contained. (viewBox, path).
@@ -875,16 +920,27 @@ def render_audience(aud, verdicts=(), hero=None):
     hero_html = (f'<figure class="fig wide"><img src="{esc(inline_figure(hero[0]))}" '
                  f'alt="Overview image of the study">{cap}</figure>' if hero else "")
     glance = glance_card(aud.get("glance"), verdicts)
-    secs = "".join(f'<h2 class="sec">{esc(s.get("h", ""))}</h2>{prose_blocks(s.get("p", ""))}'
+    # section headings are optional — a published summary is one untitled prose block
+    secs = "".join((f'<h2 class="sec">{esc(s["h"])}</h2>' if s.get("h") else "")
+                   + prose_blocks(s.get("p", ""))
                    for s in aud.get("sections", []))
     closing = f'<p class="aud-closing">{esc(aud["closing"])}</p>' if aud.get("closing") else ""
+    title_html = f'<h1>{esc(aud["title"])}</h1>' if aud.get("title") else ""
+    # when the tab is sourced from a published nanopub, link back to that signed,
+    # agent-attributed artefact — the point of putting the summary on the network
+    prov = ""
+    if aud.get("np_uri"):
+        npurl = PLATFORM + "/np/?uri=" + urllib.parse.quote(aud["np_uri"], safe="")
+        prov = (f'<p class="aud-prov">Published as a signed nanopublication, attributed to an '
+                f'AI software agent. <a href="{esc(npurl)}" target="_blank" rel="noopener">'
+                f'View the nanopublication &#8599;</a></p>')
     return (f'<article class="article">'
             f'<div class="ai-banner"><span class="ai-tag">AI-generated summary</span>'
             f'A plain-language retelling for {esc(who)}, written by an AI from the verified '
             f'record. It simplifies and never overrides the signed science. '
-            f'<a href="#" data-goto="record">Read the full record &rarr;</a></div>'
+            f'<a href="#" data-goto="record">Read the full record &rarr;</a></div>{prov}'
             f'<p class="eyebrow">Plain-language summary</p>'
-            f'<h1>{esc(aud.get("title", ""))}</h1>{level}{deck}{hero_html}{glance}{secs}{closing}</article>')
+            f'{title_html}{level}{deck}{hero_html}{glance}{secs}{closing}</article>')
 
 
 def tabs_wrap(audiences, verdicts=(), hero=None):
@@ -1181,6 +1237,8 @@ SYNTH_CSS = """<style>
 .ai-tag{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:#fff;background:var(--accent);border-radius:999px;padding:.14rem .55rem;margin-right:.5rem;}
 .ai-banner a{color:var(--accent);font-weight:700;white-space:nowrap;}
+.aud-prov{margin:.55rem 0 0;font-family:var(--sans);font-size:.8rem;color:var(--muted);}
+.aud-prov a{color:var(--accent);font-weight:600;white-space:nowrap;}
 .aud-closing{margin:1.7rem 0;font-family:var(--serif);font-size:1.2rem;font-weight:600;line-height:1.4;
   border-left:4px solid var(--brand);padding-left:1.1rem;color:var(--ink);}
 .aud-level{display:flex;align-items:center;gap:.5rem;font-family:var(--sans);font-size:.85rem;
@@ -1667,7 +1725,16 @@ def main(argv=None):
     if not audience_path:
         default_aud = root / "nanopubs" / "audience.json"
         audience_path = str(default_aud) if default_aud.exists() else None
-    audiences = load_audiences(audience_path)
+    # Prefer AI-summary nanopubs published on the network (signed, agent-attributed,
+    # `schema:about` this apex) — the reader sees the on-network artefacts. Fall back
+    # to a committed audience.json when none are published (or the network is down).
+    audiences = fetch_published_summaries(entry)
+    if audiences:
+        print(f"  audiences: {len(audiences)} published summary nanopub(s) from the network")
+    else:
+        audiences = load_audiences(audience_path)
+        if audiences:
+            print(f"  audiences: {len(audiences)} from {audience_path} (no published summaries)")
 
     style = load_style()
     con = fetch_con(entry)
