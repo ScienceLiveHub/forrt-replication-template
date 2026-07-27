@@ -164,3 +164,72 @@ def test_tab_bar_and_svg_icon():
     assert 'data-tab="record"' in bar and 'data-tab="schools"' in bar
     assert bar.count("<svg") == 2                # record (file-lines) + schools (graduation-cap)
     assert bs.svg_icon("nonexistent-icon") == ""  # unknown name -> no icon, no crash
+
+
+# --- published AI-summary nanopubs -> audience tabs -------------------------
+
+def _rows():
+    return [
+        {"np": {"value": "https://w3id.org/np/RApub"},
+         "audience": {"value": "http://www.wikidata.org/entity/Q2388316"},
+         "text": {"value": "First para.\n\nSecond para."},
+         "audLabel": {"value": "General public - a non-specialist adult audience"},
+         "date": {"value": "2026-07-26T00:00:00Z"}},
+        {"np": {"value": "https://w3id.org/np/RAsch"},
+         "audience": {"value": "https://w3id.org/sciencelive/o/terms/audience/secondary-13-16"},
+         "text": {"value": "For schools."},
+         "audLabel": {"value": "Secondary school (ages 13-16) - lower secondary"},
+         "isEdu": {"value": "true"},
+         "date": {"value": "2026-07-25T00:00:00Z"}},
+    ]
+
+
+def test_fetch_published_summaries_parses_rows(monkeypatch):
+    monkeypatch.setattr(bs, "sparql", lambda q: _rows())
+    auds = bs.fetch_published_summaries("https://example.org/apex")
+    assert len(auds) == 2
+    pub = next(a for a in auds if a["id"] == "q2388316")
+    assert pub["label"] == "General public"        # label is split off the "label - desc"
+    assert pub["icon"] == "users"
+    assert pub["np_uri"].endswith("RApub")
+    assert pub["sections"] == [{"h": "", "p": "First para.\n\nSecond para."}]
+    sch = next(a for a in auds if a["id"] == "secondary-13-16")
+    assert sch["icon"] == "graduation-cap"         # a schema:EducationalAudience
+
+
+def test_fetch_published_summaries_one_per_audience(monkeypatch):
+    rows = [
+        {"np": {"value": "https://w3id.org/np/RAnew"}, "audience": {"value": "http://www.wikidata.org/entity/Q2388316"},
+         "text": {"value": "newer"}, "date": {"value": "2026-07-26"}},
+        {"np": {"value": "https://w3id.org/np/RAold"}, "audience": {"value": "http://www.wikidata.org/entity/Q2388316"},
+         "text": {"value": "older"}, "date": {"value": "2026-07-01"}},
+    ]
+    monkeypatch.setattr(bs, "sparql", lambda q: rows)
+    auds = bs.fetch_published_summaries("apex")
+    assert len(auds) == 1 and auds[0]["np_uri"].endswith("RAnew")  # keeps first (latest by ORDER BY)
+
+
+def test_fetch_published_summaries_empty_on_error(monkeypatch):
+    monkeypatch.setattr(bs, "sparql", lambda q: (_ for _ in ()).throw(RuntimeError("down")))
+    assert bs.fetch_published_summaries("apex") == []   # network error -> fall back, never crash
+    assert bs.fetch_published_summaries("") == []
+
+
+def test_render_audience_published_links_to_signed_nanopub():
+    aud = {"id": "q2388316", "label": "General public", "icon": "users",
+           "sections": [{"h": "", "p": "First para.\n\nSecond para."}],
+           "np_uri": "https://w3id.org/np/RAxyz"}
+    html = bs.render_audience(aud)
+    assert 'class="aud-prov"' in html and "View the nanopublication" in html
+    assert "/np/?uri=" in html and "RAxyz" in html
+    assert "<h1></h1>" not in html                       # no empty title
+    assert '<h2 class="sec"></h2>' not in html           # no empty heading
+    assert "<p>First para.</p>" in html                  # flat prose rendered as paragraphs
+
+
+def test_render_audience_file_backed_has_no_provenance():
+    aud = {"id": "citizens", "label": "For citizens",
+           "sections": [{"h": "What", "p": "Body."}]}
+    html = bs.render_audience(aud)
+    assert 'class="aud-prov"' not in html                # only published tabs get the link
+    assert '<h2 class="sec">What</h2>' in html           # a real heading still renders
