@@ -86,8 +86,10 @@ For tokens that don't apply yet (e.g. `{{ZENODO_DOI}}` — minted at first relea
 
 ## Step 4 — Substitute
 
-For each token, run a find-and-replace across the repo — but **not across all of
-it**. Three trees are excluded, and the third is not optional:
+Substitution runs across the repo — but **not across all of it**. Three trees are
+excluded, and the third is not optional. The exclusion is enforced by
+`is_protected()` in `scripts/init_template.py` and tested; the rationale below is
+why it exists, not a spec you re-implement by hand:
 
 - `.git/` — obviously.
 - `.claude/` — this SKILL.md documents the token system, and
@@ -109,36 +111,51 @@ it**. Three trees are excluded, and the third is not optional:
   about for the first-run guard ("grepping for `{{...}}` … is exactly what used
   to cause false-positive skips and silent-green CI"), one directory over.
 
+**Do not hand-roll this as a shell loop.** `scripts/init_template.py` does it,
+and the exclusion above is a tested function there rather than a regex you have
+to get right in the moment. Write the answers from Step 3 to a JSON file and run
+it:
+
 ```bash
-# Build the file list once. The exclusions are load-bearing — see the table above.
-files=$(grep -rln '{{[A-Z_]\+}}' . \
-  --exclude-dir=.git --exclude-dir=.claude \
-  --exclude-dir=tests --exclude-dir=scripts \
-  --include='*.md' --include='*.yml' --include='*.yaml' \
-  --include='*.json' --include='*.cff' --include='*.toml' \
-  --include='*.py' \
-  --include='Dockerfile' --include='LICENSE' \
-  2>/dev/null)
+cat > /tmp/init-values.json <<'JSON'
+{
+  "REPO_NAME": "<actual repo name>",
+  "REPO_ORG": "<actual org>",
+  "AUTHOR_NAME": "<full name>",
+  "AUTHOR_GIVEN": "<given>",
+  "AUTHOR_FAMILY": "<family>",
+  "AUTHOR_EMAIL": "<email>",
+  "AUTHOR_ORCID": "https://orcid.org/0000-0000-0000-0000",
+  "AUTHOR_AFFILIATION": "<institution>",
+  "GITHUB_USERNAME": "<handle>",
+  "PAPER_TITLE": "<title>",
+  "PAPER_DOI": "10.x/y",
+  "PAPER_AUTHOR_GIVEN": "<given>",
+  "PAPER_AUTHOR_FAMILY": "<family>",
+  "PAPER_YEAR": "<year>",
+  "REPO_DESCRIPTION": "<one sentence>",
+  "YEAR": "<current year>",
+  "RELEASE_DATE": "<today, ISO>"
+}
+JSON
 
-# Assert the exclusion actually held before letting sed loose. If this fires,
-# STOP — do not "fix" it by proceeding; the fixtures are what is at stake.
-if printf '%s\n' $files | grep -qE '(^|/)(tests|scripts|\.claude)/'; then
-  echo "ABORT: protected tree present in substitution list" >&2
-  exit 1
-fi
+# Add --drop-prior-chain when the user left {{PRIOR_CHAIN_URI}} blank; it removes
+# the `- type: generic` entry and its comment block from CITATION.cff.
+# Add --allow-deferred TOKEN for any value that does not exist yet — e.g.
+# --allow-deferred PAPER_DOI when the paper is unsubmitted.
+pixi run -e tests python scripts/init_template.py --values /tmp/init-values.json
 
-# For each placeholder, sed-replace
-for f in $files; do
-  sed -i.bak \
-    -e "s|{{REPO_NAME}}|<actual repo name>|g" \
-    -e "s|{{REPO_ORG}}|<actual org>|g" \
-    -e "s|{{AUTHOR_NAME}}|<full name>|g" \
-    # ... etc for each token ...
-    "$f" && rm "$f.bak"
-done
+# Preview first if you want: --dry-run lists what would change and writes nothing.
 ```
 
-Use the Edit tool for each substitution rather than a shell loop if you prefer per-file precision.
+The script refuses to run without the `.template-uninitialised` sentinel, rejects
+a values file whose values themselves contain `{{`, never writes a protected
+tree, and finishes by auditing for genuine misses — reporting them and exiting
+nonzero. Re-running it with the same values is a no-op.
+
+Everything it enforces is covered by `tests/test_init_template.py`, including
+the exclusion holding for an absolute root, a relative root and `.` alike —
+which is exactly what the bash predecessor got wrong.
 
 ## Step 5 — Configure git identity
 
@@ -157,28 +174,31 @@ Read `USER_PREFERENCES.md` `add_co_authored_by_claude_trailer` value. If `true`,
 
 ## Step 7 — Verify
 
-Re-run the scoped survey from Step 1 and confirm nothing unexpected survives.
-Two classes of token are *expected* to remain and must not be reported as
-failures:
+Confirm nothing unexpected survives. Four classes of token are *expected* to
+remain and must not be reported as failures:
 
 - **Release-minted** — `{{ZENODO_DOI}}`, `{{ZENODO_VERSION_DOI}}`, `{{SWHID}}`.
   Recorded automatically by `.github/workflows/release-identifiers.yml`.
+- **Doc examples** — `{{TOKEN}}`, `{{PLACEHOLDER}}`, literal illustrations of the
+  token system in `docs/` prose.
 - **Fixtures** — everything under `tests/`, `scripts/` and `.claude/` (Step 4).
+- **Explicitly allowed** — anything you passed to `--allow-deferred`, for a value
+  that does not exist yet. Leaving such a token in place is safe: `_clean()` in
+  `build_chain_draft.py` rejects any value containing `{{`, so it cannot reach a
+  signed nanopub.
+
+Step 4's script already audits on exit, so this is a re-check rather than the
+first look. Pass the same `--allow-deferred` flags you passed in Step 4:
 
 ```bash
-grep -rln '{{[A-Z_]\+}}' . \
-  --exclude-dir=.git --exclude-dir=.claude \
-  --exclude-dir=tests --exclude-dir=scripts \
-  --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' \
-  --include='*.cff' --include='*.toml' --include='*.py' \
-  --include='Dockerfile' --include='LICENSE' 2>/dev/null \
-  | while read -r f; do
-      grep -oE '\{\{[A-Z_]+\}\}' "$f" \
-        | grep -qvE '\{\{(ZENODO_DOI|ZENODO_VERSION_DOI|SWHID)\}\}' && echo "$f"
-    done
+pixi run -e tests python scripts/init_template.py --check
+# ...or, when a value legitimately does not exist yet:
+pixi run -e tests python scripts/init_template.py --check --allow-deferred PAPER_DOI
 ```
 
-Anything this prints is a genuine miss — report it and ask the user.
+It prints `MISS <file>: <tokens>` per genuine miss and exits nonzero. Anything it
+reports is a real miss — report it and ask the user. Exit 0 means the only
+survivors are the deferred, doc-example and explicitly-allowed tokens.
 
 Then run the test suite. It must be green *after* substitution, not just before:
 
