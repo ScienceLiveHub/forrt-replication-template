@@ -285,6 +285,37 @@ def test_placeholder_tokens_in_draft_fences_are_never_emitted(draft):
             assert "{{" not in v
 
 
+def test_placeholder_fixtures_have_not_been_substituted():
+    """Canary: /init-template must never sed this file.
+
+    The guards in this module are only meaningful while their fixtures still
+    contain literal placeholder tokens. If init-template's directory exclusion
+    regresses (it is a `--exclude-dir` in SKILL.md Step 4, and was once a
+    fragile `grep -v '^\\./tests/'` post-filter that silently matched nothing),
+    sed rewrites those fixtures to real values. `assert "{{" not in v` above
+    then passes *vacuously* — the regression guard against publishing a raw
+    placeholder into a signed nanopub stops guarding, without failing.
+
+    So assert the inputs, not just the outputs. The expected tokens are built
+    by concatenation below precisely so that sed — which matches the contiguous
+    literal `{{NAME}}` — cannot rewrite this list in step with the fixtures it
+    is checking.
+    """
+    src = Path(__file__).read_text()
+    missing = [
+        name for name in (
+            "ZENODO_VERSION_DOI", "RELEASE_DATE",
+            "REPO_ORG", "REPO_NAME", "ZENODO_DOI", "PAPER_DOI",
+        )
+        if "{{" + name + "}}" not in src
+    ]
+    assert not missing, (
+        f"Placeholder fixtures were substituted (missing: {missing}). Restore "
+        f"them with `git checkout -- {Path(__file__).name}` and fix the "
+        "directory exclusion in .claude/skills/init-template/SKILL.md Step 4."
+    )
+
+
 # --- content routing (drafts) --------------------------------------------
 
 def test_drafted_content_is_extracted(draft):
