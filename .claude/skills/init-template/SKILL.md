@@ -25,11 +25,21 @@ survive initialisation (Step 4).
 
 ```bash
 grep -rln '{{[A-Z_]\+}}' . \
+  --exclude-dir=.git --exclude-dir=.claude \
+  --exclude-dir=tests --exclude-dir=scripts \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='Dockerfile' --include='LICENSE' \
-  2>/dev/null | grep -vE '^\./(\.claude|tests|scripts)/' | head
+  2>/dev/null | head
 ```
+
+> **Exclude with `--exclude-dir`, never with a `grep -v '^\./…'` post-filter.**
+> Whether `grep -rln` prefixes its output with `./` is not guaranteed — some
+> builds and locales emit `tests/foo.py`, not `./tests/foo.py`. An anchored
+> `^\./(tests|scripts)/` pattern then matches nothing, the exclusion silently
+> becomes a no-op, and Step 4 substitutes the very fixtures Step 4 exists to
+> protect. `--exclude-dir` is matched by grep against the directory name itself,
+> so it cannot be defeated by a path-prefix difference.
 
 ## Step 2 — Derive what you can without asking
 
@@ -102,11 +112,20 @@ it**. Three trees are excluded, and the third is not optional:
 ```bash
 # Build the file list once. The exclusions are load-bearing — see the table above.
 files=$(grep -rln '{{[A-Z_]\+}}' . \
+  --exclude-dir=.git --exclude-dir=.claude \
+  --exclude-dir=tests --exclude-dir=scripts \
   --include='*.md' --include='*.yml' --include='*.yaml' \
   --include='*.json' --include='*.cff' --include='*.toml' \
   --include='*.py' \
   --include='Dockerfile' --include='LICENSE' \
-  2>/dev/null | grep -vE '^\./(\.git|\.claude|tests|scripts)/')
+  2>/dev/null)
+
+# Assert the exclusion actually held before letting sed loose. If this fires,
+# STOP — do not "fix" it by proceeding; the fixtures are what is at stake.
+if printf '%s\n' $files | grep -qE '(^|/)(tests|scripts|\.claude)/'; then
+  echo "ABORT: protected tree present in substitution list" >&2
+  exit 1
+fi
 
 # For each placeholder, sed-replace
 for f in $files; do
@@ -148,10 +167,11 @@ failures:
 
 ```bash
 grep -rln '{{[A-Z_]\+}}' . \
+  --exclude-dir=.git --exclude-dir=.claude \
+  --exclude-dir=tests --exclude-dir=scripts \
   --include='*.md' --include='*.yml' --include='*.yaml' --include='*.json' \
   --include='*.cff' --include='*.toml' --include='*.py' \
   --include='Dockerfile' --include='LICENSE' 2>/dev/null \
-  | grep -vE '^\./(\.git|\.claude|tests|scripts)/' \
   | while read -r f; do
       grep -oE '\{\{[A-Z_]+\}\}' "$f" \
         | grep -qvE '\{\{(ZENODO_DOI|ZENODO_VERSION_DOI|SWHID)\}\}' && echo "$f"
