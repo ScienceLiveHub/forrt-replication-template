@@ -19,13 +19,14 @@ If the upstream paper is already known to have FORRT chains on the network, pref
 
 ## Prerequisite — the replication-radar MCP server
 
-This skill calls the **`replication-radar`** MCP server, declared in this repo's `.mcp.json` and enabled in `.claude/settings.json`. It is launched with `uvx` from PyPI:
+This skill calls the **`replication-radar`** MCP server. Install it **once, user-scoped**, so it is available in every session and folder (and there is no per-repo scope clash):
 
 ```
-uvx replication-radar
+pipx install replication-radar
+claude mcp add replication-radar -s user -- replication-radar
 ```
 
-`uv`/`uvx` is already part of the template's toolchain (`uvx` fetches the package from PyPI on first use). The server hits the public OpenAIRE Graph API anonymously (no key). If the tools below are not available, tell the user the MCP server isn't connected and to check that `uv` is installed and the `.mcp.json` server was approved.
+`pipx` needs no extra runtime; see the [MCP setup guide](https://github.com/ScienceLiveHub/replication-radar/blob/main/docs/mcp-setup.md) for other agents and an optional `GITHUB_TOKEN`. The server hits the public OpenAIRE Graph API anonymously (no key). This repo intentionally does **not** bundle the server in a `.mcp.json`: per-repo `uvx` autoload needs `uv` installed and conflicts with a user-scoped install. If the tools below are not available, tell the user to install replication-radar user-scoped as above.
 
 It exposes three tools:
 
