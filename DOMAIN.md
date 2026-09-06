@@ -19,7 +19,7 @@ When the user asks Claude to set up a typical analysis, the default tools to sug
 | Multi-dimensional arrays | `xarray` | NetCDF/Zarr-aware, lazy via `dask` |
 | Climate reanalysis | `cdsapi` (Copernicus C3S) | ERA5, CRU TS, CMIP6 |
 | Marine reanalysis | `copernicusmarine` | credentials at `~/.copernicusmarine/.copernicusmarine-credentials` |
-| Climate Digital Twin (~5 km, daily) | `polytope-client` or `earthkit-data` | Destination Earth Climate DT — needs DestinE Data Lake account |
+| Climate Digital Twin (~5 km, **hourly**) | `polytope-client` or `earthkit-data` | Destination Earth Climate DT — needs DestinE Data Lake account. See § Destination Earth Climate DT below before writing a request. |
 | Biodiversity occurrences | `pygbif` | always mint a download DOI per query |
 | HEALPix on geographic data (Earth) | `healpix-geo` (EOPF-DGGS) | **default for biodiversity / climate / EO work** — geo-aware: WGS84 ellipsoidal corrections, cartopy integration, xarray-friendly. Always pass `nest=True` — see below. |
 | HEALPix on pure-sphere (astrophysics, sky maps) | `healpy` | The astrophysics-original library. Theta/phi colatitudes, no CRS. Use only when the data has no terrestrial coordinate system (e.g. CMB, sky surveys). |
@@ -87,6 +87,33 @@ hp.boundaries(nside, pix, step=N, nest=True)
 Mixing RING and NESTED in the same workflow makes cell indices incompatible and breaks tile-based / hierarchical operations. Mixing `healpy` and `healpix-geo` in the same workflow is also a mistake — they index pixels the same way (NESTED is consistent across both), but the coordinate semantics differ (theta/phi vs lon/lat); pick one and stay consistent. Default to `healpix-geo` for any work over Earth's surface.
 
 If a notebook needs RING (e.g. for spherical-harmonic transforms via `hp.map2alm`), do the SHT work in a clearly-scoped block, but keep the on-disk pixelisation NESTED.
+
+### Destination Earth Climate DT — get the request keys from the examples, never from memory
+
+Every fact below was verified against [`destination-earth-digital-twins/polytope-examples`](https://github.com/destination-earth-digital-twins/polytope-examples) (`climate-dt/`, read 2026-09-06). Re-check it there before writing a request: a wrong key does not fail loudly, it silently retrieves a different simulation.
+
+**Generation 2 is not generation 1 with newer dates.** The keys differ:
+
+| | generation 1 | generation 2 |
+|---|---|---|
+| Period | 2020–2050 | **1990–2049**, one continuous transient |
+| Atmosphere | ~10 km (`standard` ≈ L7/H128) | **~5 km**; `resolution: "high"` is the native HEALPix delivery, level 10 (nside 1024, ~6.3 km) |
+| Cadence | 6-hourly / daily in practice | **hourly** for the atmosphere (`clte`, `levtype` sfc/pl/hl/sol); ocean and sea-ice (`o2d`, `o3d`) are daily means |
+| Scenario | `activity: "ScenarioMIP"` | `activity: "projections"`, `experiment: "SSP3-7.0"` |
+| Historical | — | `activity: "baseline"`, `experiment: "hist"` |
+| Endpoint | `polytope.lumi.apps.dte.destination-earth.eu` | `polytope.mn5.apps.dte.destination-earth.eu` |
+
+Three coupled models — `IFS-NEMO`, `IFS-FESOM`, `ICON` — each a separate `model` value, all harmonised onto HEALPix.
+
+The hourly stream (`clte`) takes `date` + `time` (`"0000/to/2300/by/0100"` for every hour); the monthly-mean stream (`clmn`) takes `year` + `month` instead, and its parameters are named `avg_*` (`avg_2t`, `avg_tprate`).
+
+**MARS cannot crop HEALPix with a lat/lon box.** An `area` key raises `Representation::croppedRepresentation() not implemented for HEALPixNested`. A regional study therefore either downloads the globe and subsets locally, or uses Polytope's **server-side feature extraction** — `feature: {"type": "polygon", "shape": [[lat, lon], …]}`, also `timeseries`, `boundingbox`, `trajectory`, `verticalprofile`. For anything hourly at `resolution: "high"` the feature is not an optimisation, it is the only tractable route: one year of hourly global level-10 fields is hundreds of gigabytes.
+
+Commit the polygon rather than fetching a boundary at runtime, so the study area cannot drift with an upstream dataset.
+
+**Don't resample extremes.** The Climate DT arrives already on HEALPix, so there is usually nothing to regrid — and for extreme-value work you actively want to keep it that way. `healpix-resample`'s `PSFResampler` (a Gaussian kernel plus damped least squares) is the best reconstruction for smooth fields and exactly the wrong choice for annual maxima: it damps the peaks being measured. If a flux genuinely must be moved onto another grid, `ConservativeResampler` preserves the total; if only areas or a domain mask are needed, no resampling is required at all, because HEALPix cells are equal-area by construction and the authalic definition keeps them equal-area on the WGS84 ellipsoid.
+
+What the ellipsoid *does* change is **membership**: a server-side polygon clip is applied on the sphere, and authalic and geodetic latitude differ by up to 0.128° (~14 km) at mid-latitudes, so border cells can fall on either side. Measure how many and report it as a deviation; don't silently "correct" it.
 
 ### Biodiversity is high-precision climate-impact science
 
