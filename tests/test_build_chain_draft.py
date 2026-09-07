@@ -693,3 +693,54 @@ def test_concept_field_returns_none_rather_than_binding_a_non_class(monkeypatch)
     monkeypatch.setattr(bcd, "_wikidata_claims", lambda qid, prop, **k: [])
     assert bcd.resolve_wikidata("atmospheric river", require_concept=True) is None
 
+
+
+# --- Wikidata fields must not fail silently -------------------------------
+#
+# All three faults below were real, on a chain that had already been published
+# with an empty topic field and nobody noticed.
+
+def test_draft_labels_reads_a_fenced_block():
+    """Every other field in a draft uses a fence, so an author reaches for one."""
+    text = (
+        "### Select related topics/tags\n\n"
+        "```\nextreme rainfall\nglobal warming\n```\n"
+    )
+    assert bcd.draft_labels(text, {"label": "Select related topics/tags"}) == [
+        "extreme rainfall", "global warming"]
+
+
+def test_draft_labels_does_not_read_bold_prose_as_a_bullet():
+    """`[-*]` matched the first asterisk of `**Not used: ...**`, so a sentence
+    fragment was submitted to Wikidata as a topic."""
+    text = (
+        "### Select related topics/tags\n\n"
+        "**Not used: `return period` (Q2627230).** It is the right concept, but\n"
+        "the item carries no P279.\n\n"
+        "- extreme rainfall\n"
+    )
+    assert bcd.draft_labels(text, {"label": "Select related topics/tags"}) == [
+        "extreme rainfall"]
+
+
+def test_draft_labels_still_reads_the_skeleton_bullets():
+    text = "### Search keywords (Wikidata)\n\n- _Label 1: extreme rainfall\n- _Label 2: ___\n"
+    assert bcd.draft_labels(text, {"label": "Search keywords (Wikidata)"}) == [
+        "extreme rainfall"]
+
+
+def test_split_explicit_qid():
+    assert bcd.split_explicit_qid("global warming (Q7942)") == ("global warming", "Q7942")
+    assert bcd.split_explicit_qid("global warming [Q7942]") == ("global warming", "Q7942")
+    assert bcd.split_explicit_qid("global warming") == ("global warming", None)
+    # A trailing parenthetical that is not a QID must be left alone.
+    assert bcd.split_explicit_qid("return period (years)") == ("return period (years)", None)
+
+
+def test_labels_agree_is_loose_but_not_blind():
+    assert bcd._labels_agree("global warming", "global warming")
+    assert bcd._labels_agree("climate model", "Climate Model")
+    assert bcd._labels_agree("extreme rainfall", "extreme rainfall (meteorology)")
+    # The failure this guards: a QID that resolves cleanly to the wrong concept.
+    assert not bcd._labels_agree("generalized extreme value distribution", "Gensdarmes")
+    assert not bcd._labels_agree("climate model", "Fubini's theorem")
