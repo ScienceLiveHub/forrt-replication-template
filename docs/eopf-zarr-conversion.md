@@ -172,11 +172,17 @@ lon, lat = hgn.healpix_to_lonlat(ds.cell_ids.values, level=12, ellipsoid="wgs84"
 
 The metadata cost is modest (two attributes + a coordinate); the interop benefit is large.
 
-## Full conversion examples (Sentinel-2, Sentinel-3)
+## Resampling onto the grid
 
-For complete worked examples of converting legacy projected EO products (Sentinel-2 UTM tiles, Sentinel-3 swaths) to GRID4EARTH HEALPix Zarr — including resampling method choice, multi-stage parallel processing, and STAC metadata propagation — see [`EOPF-DGGS/legacy-converters`](https://github.com/EOPF-DGGS/legacy-converters).
+Converting a projected or spherical product onto ellipsoidal HEALPix needs a resampling operator, and [`healpix-resample`](https://pypi.org/project/healpix-resample/) provides them with `ellipsoid="WGS84"`. **The choice is dictated by the variable, not by convenience:**
 
-> **Currently private; will be public soon.** Until then, ask the project maintainer for collaborator access if you need worked S2/S3 conversion examples. This doc covers the convention itself; `legacy-converters` covers product-specific conversion pipelines.
+| Variable | Resampler | Why |
+|---|---|---|
+| A **flux** or mass-like quantity (precipitation, radiation, fluxes) | `ConservativeResampler` | Area-weighted binning; exactly mass-preserving, and cannot invent a value the input did not have. |
+| A **smooth, signed** field (temperature, geopotential) | `PSFResampler` / `BilinearResampler` | Reconstruction quality matters and ringing is not a hazard. |
+| Anything whose **extremes** are the subject | `ConservativeResampler` or `NearestResampler` | A reconstruction kernel changes maxima. |
+
+The last row is not hypothetical. Applying `PSFResampler` (unregularised, `lam=0.0`) to hourly Climate DT precipitation returned **39.8 % negative rainfall** and inflated the field maximum by **77 %** — an unregularised least-squares fit rings on a sparse non-negative field. `ConservativeResampler` on the same input gave a mean ratio of 1.0000 and a max ratio of 1.0000. If a study measures extremes, verify on one month that the conversion leaves them alone before converting the whole archive.
 
 ## When to use this format
 
@@ -195,4 +201,4 @@ For complete worked examples of converting legacy projected EO products (Sentine
 - [xdggs](https://xdggs.readthedocs.io/) — xarray accessor for DGGS, including HEALPix.
 - [Zarr v3 specification](https://zarr-specs.readthedocs.io/) — underlying storage format.
 - [GRID4EARTH](https://github.com/EOPF-DGGS) — the EU's EOPF DGGS effort hosting this convention.
-- `EOPF-DGGS/legacy-converters` (private; soon public) — production-quality S2/S3 → GRID4EARTH converter.
+- [healpix-resample](https://pypi.org/project/healpix-resample/) — resampling onto ellipsoidal HEALPix (conservative, nearest, bilinear, bicubic, PSF).
