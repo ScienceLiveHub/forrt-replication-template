@@ -5,8 +5,10 @@ description: >-
   .template-uninitialised sentinel is gone) and the notebooks are no longer
   scaffolds; otherwise ready=false with an explanatory ::notice::. Fails loudly
   rather than skipping green in two cases — the silent-green failure mode:
-    1. The run is a release event. A release of an unready repo is always a bug,
-       and its archival (Zenodo / Software Heritage / Wayback) is permanent.
+    1. The run is a release event on a NON-template repo. A release of an unready
+       replication is always a bug, and its archival (Zenodo / Software Heritage /
+       Wayback) is permanent. The canonical template itself (is_template=true) is
+       exempt: it may cut version-marker releases and simply skips archival.
     2. The repo looks like a finished replication (real published nanopub URIs
        in nanopubs/PUBLISHED.md) yet would still skip.
   Case 1 is independent of case 2 on purpose: Phase 4 (release) precedes Phase 5
@@ -22,6 +24,13 @@ runs:
   steps:
     - id: check
       shell: bash
+      env:
+        # GitHub sets is_template=true only on the canonical template repository;
+        # a repo created *from* it via "Use this template" has is_template=false.
+        # Tripwire 1 uses this to tell "the template cutting a version-marker
+        # release" (fine — skip archival) from "an un-initialised replication
+        # being released" (a bug — fail).
+        IS_TEMPLATE: ${{ github.event.repository.is_template }}
       run: |
         ready=true
         reason=""
@@ -53,9 +62,15 @@ runs:
           # Phase 5 (publish the chain) — so at a first release PUBLISHED.md is
           # still empty by design and Tripwire 2 below is dormant at exactly the
           # moment it is most needed.
-          if [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "release" ] && [ "${IS_TEMPLATE}" != "true" ]; then
             echo "::error::${reason} BUT this is a release event — a release of an unready repository is always a bug. The release and its permanent archival (Zenodo, Software Heritage, Wayback) cannot be undone. Failing instead of skipping green; fix the sentinel/scaffold state above, then re-cut the release."
             exit 1
+          elif [ "${GITHUB_EVENT_NAME}" = "release" ]; then
+            # is_template=true: the canonical template repo itself. It is allowed
+            # to cut a version-marker GitHub Release WITHOUT archiving itself —
+            # Zenodo / Software Heritage / Wayback archival is for a scaffolded
+            # replication, never the template. Skip the pipeline green here.
+            echo "::notice::Release on the template repository itself (is_template=true) — skipping the archival pipeline (the template is never archived; replications are). Expected, not a failure."
           fi
 
           # Tripwire 2 — a finished replication that still wants to skip is a bug,
