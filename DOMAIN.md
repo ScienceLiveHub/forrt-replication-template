@@ -29,7 +29,7 @@ When the user asks Claude to set up a typical analysis, the default tools to sug
 | Raster / vector I/O | `rasterio`, `geopandas` | |
 | Scattering on the sphere | `foscat>=2026.4.1` | upstream PyPI; CPU auto-detection |
 | Intermediate / archival arrays | `netCDF4` (small ≤2 GB), `zarr` (larger / cloud) | **never `.npz`** — see Data formats convention below |
-| HEALPix-indexed EO archival | EOPF Zarr (Earth Observation Processing Framework profile) | Standardised metadata for HEALPix dim-naming, NESTED ordering, projection. See [`EOPF-DGGS/legacy-converters`](https://github.com/EOPF-DGGS/legacy-converters) for conversion patterns. |
+| HEALPix-indexed EO archival | EOPF Zarr (Earth Observation Processing Framework profile) | Standardised metadata for HEALPix dim-naming, NESTED ordering, projection. See [`docs/eopf-zarr-conversion.md`](docs/eopf-zarr-conversion.md). |
 
 Pin every dependency in `pixi.toml` and commit the regenerated `pixi.lock` — pangeo dev environments hide missing deps locally and CI then silently fails with empty notebook cells.
 
@@ -43,7 +43,7 @@ Use the following hierarchy:
 
 - **NetCDF (`.nc`)** — for arrays up to ~2 GB. Self-describing via CF conventions, language-agnostic, the standard for terrestrial climate and EO data. Read/write via `xarray.Dataset.to_netcdf()` / `xr.open_dataset()`. Default choice for most intermediate artefacts in this domain.
 - **Zarr (`.zarr`)** — for larger arrays, cloud-native workflows, or when chunked I/O matters. Self-describing, lazy via `dask`, the standard for petabyte-scale EO archives. Read/write via `xarray.Dataset.to_zarr()` / `xr.open_zarr()`. Use when arrays exceed ~2 GB or live in object storage (S3, GCS).
-- **EOPF Zarr** (Earth Observation Processing Framework Zarr profile, also known as the **GRID4EARTH** DGGS Zarr convention) — for HEALPix-indexed EO data. Standardises HEALPix dimension naming, NESTED ordering declaration, ellipsoid reference, and multiscale layout so the archive is reusable across EOPF-aware tooling (xdggs, healpix-geo, healpix-plot, healpix-resample). **See [`docs/eopf-zarr-conversion.md`](docs/eopf-zarr-conversion.md)** for the convention's structure, a minimal write/read example using `xarray + zarr v3`, and how it differs from plain Zarr. Production-grade conversion of legacy projected EO products (Sentinel-2 UTM tiles, Sentinel-3 swaths) lives in [`EOPF-DGGS/legacy-converters`](https://github.com/EOPF-DGGS/legacy-converters) — currently private; until public, ask the project maintainer for collaborator access if you need worked S2/S3 examples.
+- **EOPF Zarr** (Earth Observation Processing Framework Zarr profile, also known as the **GRID4EARTH** DGGS Zarr convention) — for HEALPix-indexed EO data. Standardises HEALPix dimension naming, NESTED ordering declaration, ellipsoid reference, and multiscale layout so the archive is reusable across EOPF-aware tooling (xdggs, healpix-geo, healpix-plot, healpix-resample). **See [`docs/eopf-zarr-conversion.md`](docs/eopf-zarr-conversion.md)** for the convention's structure, a minimal write/read example using `xarray + zarr v3`, and how it differs from plain Zarr. That doc also covers **which resampler to use for which variable** — conservative for fluxes, reconstruction kernels only for smooth signed fields — which matters because the wrong one silently changes the values.
 
 **Anti-patterns:**
 
