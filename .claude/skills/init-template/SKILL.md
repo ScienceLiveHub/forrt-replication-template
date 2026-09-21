@@ -151,7 +151,10 @@ pixi run -e tests python scripts/init_template.py --values /tmp/init-values.json
 The script refuses to run without the `.template-uninitialised` sentinel, rejects
 a values file whose values themselves contain `{{`, never writes a protected
 tree, and finishes by auditing for genuine misses — reporting them and exiting
-nonzero. Re-running it with the same values is a no-op.
+nonzero. It also deletes `.zenodo.json`, which describes the template itself:
+Zenodo prefers it over `CITATION.cff`, so leaving it would archive this study
+under the template's title and creators. Re-running it with the same values is
+a no-op.
 
 Everything it enforces is covered by `tests/test_init_template.py`, including
 the exclusion holding for an absolute root, a relative root and `.` alike —

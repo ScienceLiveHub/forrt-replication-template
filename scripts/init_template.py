@@ -224,6 +224,14 @@ def plan(
     return projected
 
 
+# Files that describe the TEMPLATE repository itself and must not survive into
+# a repository created from it. `.zenodo.json` takes precedence over
+# CITATION.cff in Zenodo's GitHub integration, so if it survived, every
+# replication's Zenodo record would be archived under the template's title and
+# creators instead of its own.
+TEMPLATE_ONLY_FILES = (".zenodo.json",)
+
+
 def initialise(
     root: Path,
     values: dict[str, str],
@@ -246,6 +254,15 @@ def initialise(
     if not dry_run:
         for path in changed:
             _write(path, projected[path])
+
+    # Reported as changed on a dry run too, so the preview matches the real run.
+    for name in TEMPLATE_ONLY_FILES:
+        path = root / name
+        if path.exists():
+            if not dry_run:
+                path.unlink()
+            if path not in changed:
+                changed.append(path)
 
     return changed
 
