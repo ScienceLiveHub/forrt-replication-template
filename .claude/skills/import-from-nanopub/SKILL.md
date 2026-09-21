@@ -117,7 +117,7 @@ URI: <uri> · Label: "<label>"
 mkdir -p nanopubs/imported
 uri="<entry URI>"
 enc=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1],safe=""))' "$uri")
-base="${SCIENCELIVE_API_BASE:-https://api-dev.sciencelive4all.org}"
+base="${SCIENCELIVE_API_BASE:-https://api.sciencelive4all.org}"
 # An explicit User-Agent is required: Cloudflare answers urllib/curl defaults
 # inconsistently, and Python-urllib/3.x specifically gets HTTP 403.
 curl -sL --max-time 120 -A "forrt-replication-template" \

@@ -298,3 +298,21 @@ def test_cli_check_exits_nonzero_on_miss(tmp_path):
     assert it.main(["--root", str(repo), "--check"]) == 1
     it.initialise(repo, VALUES)
     assert it.main(["--root", str(repo), "--check"]) == 0
+
+
+def test_template_only_metadata_is_removed_on_initialise(tmp_path):
+    repo = _repo(tmp_path)
+    zen = repo / ".zenodo.json"
+    zen.write_text('{"title": "FORRT replication template"}\n')
+    changed = it.initialise(repo, VALUES)
+    assert not zen.exists()
+    assert zen in changed
+
+
+def test_template_only_metadata_survives_a_dry_run(tmp_path):
+    repo = _repo(tmp_path)
+    zen = repo / ".zenodo.json"
+    zen.write_text('{"title": "FORRT replication template"}\n')
+    changed = it.initialise(repo, VALUES, dry_run=True)
+    assert zen.exists()
+    assert zen in changed
