@@ -24,11 +24,15 @@ pipx install forrt-research-mcp
 claude mcp add forrt-research -s user -- forrt-research-mcp
 ```
 
+Already installed? `pipx upgrade forrt-research-mcp`. Versions before 0.1.1
+default to the dev API.
+
 If the `verify_chain` tool is not available, tell the user to install it as above rather than falling back to hand-written `curl`. The verification logic is tested code with pinned regression cases; a hand-rolled reimplementation reproduces the bugs those tests exist to prevent.
 
 ```bash
-# optional — the server defaults to the dev deployment and needs no key for a public read
-export SCIENCELIVE_API_BASE="https://api-dev.sciencelive4all.org"
+# optional — the server defaults to production (api.sciencelive4all.org) and needs no
+# key for a public read. Point it at dev only to test against the dev deployment:
+# export SCIENCELIVE_API_BASE="https://api-dev.sciencelive4all.org"
 export SCIENCELIVE_API_KEY="sl_..."
 ```
 
