@@ -29,6 +29,8 @@ Choose based on the Outcome's validation status:
 
 For question-rooted chains where there is no original paper to confirm/dispute, use `usesMethodIn` or `citesAsAuthority` for the methodology paper(s).
 
+Write the chosen type in the block below (a vocabulary label such as `cites as authority`, or `citesAsAuthority`). `build-chain-draft` uses it as written; leave the block empty to have the type derived from the Outcome's validation status, which is right for paper-rooted chains only.
+
 > **Note:** `replicates` is NOT in the Science Live dropdown (despite existing in upstream CiTO). When citing a notebook/tutorial that was directly reused, use **`credits`** instead.
 
 ```
@@ -44,6 +46,8 @@ https://doi.org/{{PAPER_DOI}}
 #### Additional citations (optional)
 
 If the Outcome cites methods papers, related replications, or upstream tools, add them here.
+
+One line per further citation, in this exact form (each becomes a pre-filled row):
 
 - _Type: ___ → URL: ___
 
