@@ -819,3 +819,11 @@ def test_a_date_alone_does_not_make_an_optional_step_drafted():
     spec, _ = _real_spec("08_synthesis")
     date_only = "### Completion date (date, required)\n\n```\n2026-10-01\n```\n"
     assert bcd.draft_has_content(date_only, spec, "08_synthesis") is False
+
+
+def test_restricted_choice_is_also_found_under_the_template_label():
+    spec, meta = _real_spec("01_pico")
+    text = ("### Choose the type of research question (dropdown, required)\n\n"
+            "- [x] descriptive research question - (What are the characteristics of X?)\n")
+    st = bcd.build_step("01_pico", spec, meta, {}, text, None)
+    assert st["prefill"]["type"].endswith("DescriptiveResearchQuestion")

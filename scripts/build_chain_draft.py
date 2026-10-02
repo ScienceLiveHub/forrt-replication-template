@@ -730,8 +730,11 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
         if f["kind"] == "restricted_choice":
             manual.append(name)                        # flag: agent's call, confirm it
             alias = DRAFT_HEADING_ALIAS.get((step, name))
-            lookup = {**f, "label": alias} if alias else f
-            choice = draft_choice(draft_text, lookup) if draft_text else None
+            choice = None
+            if draft_text:                             # skeleton heading first, then the
+                if alias:                              # template's own label
+                    choice = draft_choice(draft_text, {**f, "label": alias})
+                choice = choice or draft_choice(draft_text, f)
             if choice is not None:
                 prefill[name] = choice                 # ...but pre-fill the recorded choice
                 provenance[name] = f"{drafts_label}/{step}.md"
