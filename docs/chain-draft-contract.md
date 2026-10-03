@@ -120,8 +120,14 @@ replication**, recorded in the drafts — not things to leave to a form default
 (which can be wrong). The producer reads the agent's ticked option from the draft
 and puts it in `prefill` as an editable suggestion, **and** keeps the field in
 `manual` so the wizard flags it "confirm" rather than "you choose". The CiTO
-relation is derived from the validation status (Validated→`confirms`,
-PartiallySupported→`qualifies`, Contradicted→`disputes`, …).
+relation of the first citation is the one written in `06_citation.md` under
+*Citation Type*; only when the draft records none is it derived from the
+validation status (Validated→`confirms`, PartiallySupported→`qualifies`,
+Contradicted→`disputes`, …). A question-rooted chain needs the drafted value: its
+reference paper is cited as authority or for its method, not confirmed or
+qualified. Further `- Type: … → URL: …` lines in the draft become further `st02` rows,
+and the AIDA's *Supported by datasets* / *other publications* bullets become `st3` /
+`st4` rows.
 
 The **URI-suffix id** of each step (`claim`, `study`, `outcome`, …), if the draft
 gives none, is suggested as `<org>-<repo>-<step>` (from `CITATION.cff`'s

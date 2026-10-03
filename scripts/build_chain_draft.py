@@ -119,6 +119,13 @@ REPEATABLE_TEXT_FIELDS = {
     ("07_research_software", "dataset"): ("datasets", "Related Datasets"),
 }
 
+# Repeatable groups whose rows are objects (docs/chain-draft-contract.md, component
+# audit): (step, snapshot field) -> (form field, row key, draft heading).
+REPEATABLE_OBJECT_FIELDS = {
+    ("02_aida", "dataset"): ("st3", "dataset", "Supported by datasets"),
+    ("02_aida", "publication"): ("st4", "publication", "Supported by other publications"),
+}
+
 # Scalar content fields whose draft heading doesn't contain the placeholder label,
 # so label-matching fails — (step, snapshot placeholder id) -> the draft heading to
 # read the value from. (The output key stays the placeholder/component field name.)
@@ -332,6 +339,62 @@ def _draft_sections(text: str) -> dict:
     if current is not None:
         out[_norm(current)] = "\n".join(buf)
     return out
+
+
+_URL_RE = re.compile(r"https?://[^\s)\]>,;`*]+|\b10\.\d{4,9}/[^\s)\]>,;`*]+")
+_CITO_ROW_RE = re.compile(r"^\s*[-*]\s+Type:\s*(.+?)\s*(?:→|->)\s*URL:\s*(\S+)", re.M)
+
+
+def _as_url(v: str) -> str:
+    v = v.rstrip(".")
+    return v if v.startswith("http") else f"https://doi.org/{v}"
+
+
+def draft_urls(draft_text: str, heading: str) -> list[str]:
+    """URLs/DOIs listed under a draft heading, one per bullet line (skeleton
+    placeholders such as ``- _DOI 1: ___`` hold none and are skipped)."""
+    body = _draft_sections(draft_text).get(_norm(heading)) or ""
+    out = []
+    for line in body.splitlines():
+        if not re.match(r"^\s*[-*]\s+", line):
+            continue
+        m = _URL_RE.search(line)
+        if m:
+            out.append(_as_url(m.group(0)))
+    return out
+
+
+def cito_uri(value: str) -> str | None:
+    """A CiTO relation URI from what a draft records: the URI, ``cito:x``,
+    ``citesAsAuthority``, or the vocabulary label ``cites as authority[ - …]``."""
+    v = value.strip().strip("`").strip()
+    if not v:
+        return None
+    if v.startswith(CITO):
+        return v
+    v = v.split(" - ")[0].strip()
+    v = v[5:] if v.startswith("cito:") else v
+    words = re.split(r"[\s_]+", v)
+    if len(words) > 1:
+        v = words[0].lower() + "".join(w[:1].upper() + w[1:].lower() for w in words[1:])
+    return CITO + v if re.fullmatch(r"[a-z][A-Za-z]+", v) else None
+
+
+def draft_citations(draft_text: str) -> tuple[str | None, list[dict]]:
+    """The citation type recorded for the first citation (the fenced value under
+    the ``Citation Type`` heading), and any further ``- Type: … → URL: …`` rows."""
+    first = None
+    m = re.search(r"^#+\s*Citation Type[^\n]*\n(.*?)(?=^#+\s)", draft_text, re.M | re.S)
+    if m:
+        f = re.search(r"```[a-z]*\n(.*?)```", m.group(1), re.S)
+        if f and f.group(1).strip():
+            first = cito_uri(f.group(1).strip().splitlines()[0])
+    rows = []
+    for rel, url in _CITO_ROW_RE.findall(draft_text):
+        uri, u = cito_uri(rel), _URL_RE.match(url)
+        if uri and u:
+            rows.append({"cites": uri, "cited": _as_url(u.group(0))})
+    return first, rows
 
 
 def draft_choice(draft_text: str, field: dict) -> str | None:
@@ -641,16 +704,22 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
     # docs/chain-draft-contract.md). Prepare one row: the relation suggested from
     # the Outcome's validation status, cited = the replicated paper.
     if step == "06_citation":
+        drafted_type, extra_rows = draft_citations(draft_text) if draft_text else (None, [])
         row: dict = {}
-        if cito_relation:
-            row["cites"] = cito_relation
+        if drafted_type:                       # the agent's recorded choice wins: in a
+            row["cites"] = drafted_type        # question-rooted chain the cited paper is
+        elif cito_relation:                    # not confirmed or qualified, so the status
+            row["cites"] = cito_relation       # mapping would publish the wrong relation
         paper = metadata_value(step, "cited", cff)
         if paper:
             row["cited"] = paper
-        if row:
-            prefill["st02"] = [row]
-            provenance["st02"] = ("cites = validation status (see 05_outcome); "
-                                  "cited = CITATION.cff references[article]")
+        rows = ([row] if row else []) + extra_rows
+        if rows:
+            prefill["st02"] = rows
+            provenance["st02"] = ((f"cites = {drafts_label}/{step}.md" if drafted_type
+                                   else "cites = validation status (see 05_outcome)")
+                                  + "; cited = CITATION.cff references[article]"
+                                  + (f"; further rows = {drafts_label}/{step}.md" if extra_rows else ""))
         return _finish(step, registry_meta, prefill, provenance, manual, published_uri)
 
     carried = carried_placeholders(step)
@@ -660,7 +729,12 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             continue                                   # wizard fills from a prior URI
         if f["kind"] == "restricted_choice":
             manual.append(name)                        # flag: agent's call, confirm it
-            choice = draft_choice(draft_text, f) if draft_text else None
+            alias = DRAFT_HEADING_ALIAS.get((step, name))
+            choice = None
+            if draft_text:                             # skeleton heading first, then the
+                if alias:                              # template's own label
+                    choice = draft_choice(draft_text, {**f, "label": alias})
+                choice = choice or draft_choice(draft_text, f)
             if choice is not None:
                 prefill[name] = choice                 # ...but pre-fill the recorded choice
                 provenance[name] = f"{drafts_label}/{step}.md"
@@ -669,9 +743,9 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
         if wk:                                         # Wikidata concept field
             form_field, is_array = wk
             items, wanted = [], []
+            wk_alias = DRAFT_HEADING_ALIAS.get((step, name))   # also used below, offline
             if draft_text and resolve is not None:
                 needs_concept = declares_concept_type(f)
-                wk_alias = DRAFT_HEADING_ALIAS.get((step, name))
                 wk_lookup = {"label": wk_alias} if wk_alias else f
                 wanted = draft_labels(draft_text, wk_lookup)
                 for raw in wanted:
@@ -697,6 +771,14 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
                 # Labels were written but none survived. Silence here is how a
                 # topic field reaches a signed nanopub empty.
                 EMPTY_WIKIDATA.append((step, name, len(wanted)))
+            continue
+        ro = REPEATABLE_OBJECT_FIELDS.get((step, name))
+        if ro:                                         # repeatable [{key: url}] group
+            form_field, key, heading = ro
+            urls = draft_urls(draft_text, heading) if draft_text else []
+            if urls:
+                prefill[form_field] = [{key: u} for u in urls]
+                provenance[form_field] = f"{drafts_label}/{step}.md"
             continue
         rt = REPEATABLE_TEXT_FIELDS.get((step, name))
         if rt:                                         # repeatable plain-URL list
@@ -850,6 +932,8 @@ def draft_has_content(text: str, spec: dict, step: str = "") -> bool:
     so the same value would be extracted: content fields (with heading alias) and
     repeatable plain-URL lists both count."""
     for i, f in enumerate(spec.get("fields", [])):
+        if is_metadata_field(step, f["id"]):
+            continue                    # a date filled at init is not a drafted step
         if is_content_field(step, i, f):
             alias = DRAFT_HEADING_ALIAS.get((step, f["id"]))
             if draft_content(text, {"label": alias} if alias else f) is not None:

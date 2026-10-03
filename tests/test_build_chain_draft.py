@@ -744,3 +744,86 @@ def test_labels_agree_is_loose_but_not_blind():
     # The failure this guards: a QID that resolves cleanly to the wrong concept.
     assert not bcd._labels_agree("generalized extreme value distribution", "Gensdarmes")
     assert not bcd._labels_agree("climate model", "Fubini's theorem")
+
+
+# --- question-rooted chains: drafted CiTO type, AIDA evidence, PICO choice ------
+
+def _real_spec(step: str) -> tuple[dict, dict]:
+    snapshot = json.loads((ROOT / "nanopubs/templates/fields.snapshot.json").read_text())["steps"]
+    registry = json.loads((ROOT / "nanopubs/templates/registry.json").read_text())["steps"]
+    return snapshot[step], registry[step]
+
+
+def test_cito_uri_accepts_label_camelcase_prefix_and_uri():
+    c = "http://purl.org/spar/cito/citesAsAuthority"
+    for v in ("cites as authority", "cites as authority - cites as something that provides …",
+              "citesAsAuthority", "cito:citesAsAuthority", c, "`cites as authority`"):
+        assert bcd.cito_uri(v) == c
+    assert bcd.cito_uri("") is None
+    assert bcd.cito_uri("not a relation!") is None
+
+
+def test_drafted_citation_type_wins_over_the_status_mapping():
+    """A question-rooted chain cites its reference paper as authority; deriving the
+    relation from the Outcome status would publish 'qualifies' for a paper whose
+    claims were never tested."""
+    spec, meta = _real_spec("06_citation")
+    text = ("##### Citation Type (dropdown)\n\n```\ncites as authority\n```\n\n"
+            "##### DOI or other URL of the cited work (text input)\n\n```\nhttps://doi.org/10.1/x\n```\n\n"
+            "#### Additional citations (optional)\n\n"
+            "- Type: uses data from → URL: https://doi.org/10.5067/GEDI/GEDI02_A.003 (GEDI)\n"
+            "- _Type: ___ → URL: ___\n")
+    cff = {"references": [{"type": "article", "doi": "10.1/x"}]}
+    st = bcd.build_step("06_citation", spec, meta, cff, text, None,
+                        cito_relation="http://purl.org/spar/cito/qualifies")
+    rows = st["prefill"]["st02"]
+    assert rows[0]["cites"] == "http://purl.org/spar/cito/citesAsAuthority"
+    assert rows[1:] == [{"cites": "http://purl.org/spar/cito/usesDataFrom",
+                         "cited": "https://doi.org/10.5067/GEDI/GEDI02_A.003"}]   # placeholder row skipped
+
+
+def test_status_mapping_still_applies_when_the_draft_records_no_type():
+    spec, meta = _real_spec("06_citation")
+    text = "##### Citation Type (dropdown)\n\n```\n\n```\n\n##### DOI or other URL of the cited work\n"
+    st = bcd.build_step("06_citation", spec, meta, {}, text, None,
+                        cito_relation="http://purl.org/spar/cito/qualifies")
+    assert st["prefill"]["st02"][0]["cites"] == "http://purl.org/spar/cito/qualifies"
+
+
+def test_aida_datasets_and_publications_are_prefilled_as_object_rows():
+    spec, meta = _real_spec("02_aida")
+    text = ("### Supported by datasets (text input, optional)\n\n"
+            "- DOI 1: https://doi.org/10.57780/bio-65e97bc (ESA BIOMASS Level 2A)\n"
+            "- DOI 2: 10.5067/GEDI/GEDI02_A.003\n\n"
+            "### Supported by other publications (text input, optional)\n\n"
+            "- _DOI 1: ___\n")
+    st = bcd.build_step("02_aida", spec, meta, {}, text, None)
+    assert st["prefill"]["st3"] == [{"dataset": "https://doi.org/10.57780/bio-65e97bc"},
+                                    {"dataset": "https://doi.org/10.5067/GEDI/GEDI02_A.003"}]
+    assert "st4" not in st["prefill"]                     # only a skeleton placeholder there
+
+
+def test_restricted_choice_is_read_through_a_heading_alias():
+    """The PICO skeleton heads its type field 'Question Type' (an alias of the
+    template label); the ticked choice must still be found."""
+    spec, meta = _real_spec("01_pico")
+    text = ("### Question Type (dropdown, required)\n\n"
+            "- [x] descriptive research question - (What are the characteristics of X?)\n")
+    st = bcd.build_step("01_pico", spec, meta, {}, text, None)
+    assert st["prefill"]["type"].endswith("DescriptiveResearchQuestion")
+
+
+def test_a_date_alone_does_not_make_an_optional_step_drafted():
+    """init_template fills the release date into the Synthesis skeleton; that must
+    not append an otherwise empty Synthesis step to the chain."""
+    spec, _ = _real_spec("08_synthesis")
+    date_only = "### Completion date (date, required)\n\n```\n2026-10-01\n```\n"
+    assert bcd.draft_has_content(date_only, spec, "08_synthesis") is False
+
+
+def test_restricted_choice_is_also_found_under_the_template_label():
+    spec, meta = _real_spec("01_pico")
+    text = ("### Choose the type of research question (dropdown, required)\n\n"
+            "- [x] descriptive research question - (What are the characteristics of X?)\n")
+    st = bcd.build_step("01_pico", spec, meta, {}, text, None)
+    assert st["prefill"]["type"].endswith("DescriptiveResearchQuestion")
