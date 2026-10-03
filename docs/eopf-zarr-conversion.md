@@ -44,33 +44,53 @@ Each **spatial group** (e.g. `temperature/12/`) contains:
 - A `cell_ids` **coordinate** (int64) along `cells` holding HEALPix-NESTED cell identifiers.
 - Data variables indexed by `cells` (and any other dims like `time`, `species`, etc.).
 
-Each spatial group's metadata includes `zarr_conventions` and `multiscales` attributes:
+The metadata sits on two kinds of group, exactly as [`healpix-convert`](https://github.com/GRID4EARTH/healpix-convert) writes it (`healpix_convert/convert.py` and `healpix_converters.py`; checked 2026-10-01):
+
+**Each spatial group** (e.g. `temperature/12/`) declares the `dggs` convention and its grid:
 
 ```json
 {
   "zarr_conventions": [
-    {"name": "multiscales", "uuid": "d35379db-88df-4056-af3a-620245f8e347"},
-    {"name": "dggs",        "uuid": "7b255807-140c-42ca-97f6-7a1cfecdbc38"}
+    {"uuid": "7b255807-140c-42ca-97f6-7a1cfecdbc38", "name": "dggs",
+     "schema_url": "https://raw.githubusercontent.com/zarr-conventions/dggs/refs/tags/v1/schema.json",
+     "spec_url": "https://github.com/zarr-conventions/dggs/blob/v1/README.md",
+     "description": "Discrete Global Grid Systems convention for zarr"}
+  ],
+  "dggs": {
+    "name": "healpix",
+    "refinement_level": 12,
+    "indexing_scheme": "nested",
+    "ellipsoid": {"name": "wgs84", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257223563},
+    "spatial_dimension": "cells",
+    "coordinate": "cell_ids",
+    "compression": "none"
+  }
+}
+```
+
+**The multiscale parent group** (e.g. `temperature/`) declares both conventions and lists its levels, each with its `dggs` description:
+
+```json
+{
+  "zarr_conventions": [
+    {"uuid": "d35379db-88df-4056-af3a-620245f8e347", "name": "multiscales",
+     "schema_url": "https://raw.githubusercontent.com/zarr-conventions/multiscales/refs/tags/v1/schema.json",
+     "spec_url": "https://github.com/zarr-conventions/multiscales/blob/v1/README.md",
+     "description": "Multiscale layout of zarr datasets"},
+    {"uuid": "7b255807-140c-42ca-97f6-7a1cfecdbc38", "name": "dggs", "...": "as above"}
   ],
   "multiscales": {
     "layout": [
-      {
-        "asset": "12",
-        "dggs": {
-          "name": "healpix",
-          "refinement_level": 12,
-          "indexing_scheme": "nested",
-          "ellipsoid": {
-            "name": "wgs84",
-            "semimajor_axis": 6378137.0,
-            "inverse_flattening": 298.257
-          }
-        }
-      }
+      {"asset": "12", "dggs": {"name": "healpix", "refinement_level": 12, "indexing_scheme": "nested",
+                               "ellipsoid": {"name": "wgs84", "semi_major_axis": 6378137.0,
+                                             "inverse_flattening": 298.257223563}, "...": "as above"}},
+      {"asset": "11", "dggs": {"...": "refinement_level 11"}}
     ]
   }
 }
 ```
+
+The ellipsoid keys are `semi_major_axis` and `inverse_flattening`, and WGS84's inverse flattening is 298.257223563, not the rounded 298.257. [`healpix-connector`](https://github.com/annefou/healpix-connector)'s `dggs_zarr.dggs_attrs(depth)` returns the spatial-group attributes above, so prefer it to writing them by hand.
 
 The root group can carry `stac_discovery` metadata (STAC Item-level: bbox, geometry, properties, assets) if the dataset corresponds to a discoverable STAC asset.
 
@@ -104,29 +124,25 @@ ds = xr.Dataset(
         "cell_ids": (("cells",), cell_ids.astype("int64")),
         "time":     (("time",),  time),
     },
+    # Spatial-group attributes (dggs convention), as healpix-convert writes them:
     attrs={
-        "zarr_conventions": [
-            {"name": "multiscales", "uuid": "d35379db-88df-4056-af3a-620245f8e347"},
-            {"name": "dggs",        "uuid": "7b255807-140c-42ca-97f6-7a1cfecdbc38"},
-        ],
-        "multiscales": {
-            "layout": [
-                {
-                    "asset": str(level),
-                    "dggs": {
-                        "name": "healpix",
-                        "refinement_level": level,
-                        "indexing_scheme": "nested",
-                        "ellipsoid": {
-                            "name": "wgs84",
-                            "semimajor_axis": 6378137.0,
-                            "inverse_flattening": 298.257,
-                        },
-                    },
-                }
-            ]
+        "zarr_conventions": [{
+            "uuid": "7b255807-140c-42ca-97f6-7a1cfecdbc38", "name": "dggs",
+            "schema_url": "https://raw.githubusercontent.com/zarr-conventions/dggs/refs/tags/v1/schema.json",
+            "spec_url": "https://github.com/zarr-conventions/dggs/blob/v1/README.md",
+            "description": "Discrete Global Grid Systems convention for zarr",
+        }],
+        "dggs": {
+            "name": "healpix",
+            "refinement_level": level,
+            "indexing_scheme": "nested",
+            "ellipsoid": {"name": "wgs84", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257223563},
+            "spatial_dimension": "cells",
+            "coordinate": "cell_ids",
+            "compression": "none",
         },
     },
+    # Equivalent, without retyping: attrs=healpix_connector.dggs_zarr.dggs_attrs(level)
 )
 
 # Write at a single refinement level — store the dataset under a numeric group name
@@ -138,7 +154,7 @@ ds.to_zarr(
 )
 ```
 
-**Multi-level (multiscale) datasets** add coarsening: write level 12 as the native, then NESTED-coarsen by `pix >> 2` to derive level 11, level 10, etc. (`healpix-geo` and `healpix-resample` provide helpers; see `DOMAIN.md` § Default tooling stack).
+**Multi-level (multiscale) datasets** add coarsening: write level 12 as the native, then NESTED-coarsen by `pix >> 2` to derive level 11, level 10, etc., and give the parent group the `multiscales` attributes shown above. (`healpix-geo` and `healpix-resample` provide helpers; see `DOMAIN.md` § Default tooling stack).
 
 ## Reading a GRID4EARTH Zarr
 
@@ -166,7 +182,7 @@ lon, lat = hgn.healpix_to_lonlat(ds.cell_ids.values, level=12, ellipsoid="wgs84"
 | Concern | Plain Zarr | GRID4EARTH Zarr |
 |---|---|---|
 | Cell indexing | Arbitrary array dim names | `cells` dim with `cell_ids` coordinate |
-| Grid metadata | Ad-hoc / missing | `multiscales` attribute with HEALPix params + ellipsoid |
+| Grid metadata | Ad-hoc / missing | `dggs` attribute on each level group; `multiscales` layout on the parent group |
 | Resolution levels | Separate stores | Single store with numeric group names = refinement levels |
 | Interop | Per-tool conventions | Standardised across xdggs, healpix-geo, EOPF stack |
 
