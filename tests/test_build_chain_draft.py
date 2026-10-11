@@ -782,6 +782,41 @@ def test_drafted_citation_type_wins_over_the_status_mapping():
                          "cited": "https://doi.org/10.5067/GEDI/GEDI02_A.003"}]   # placeholder row skipped
 
 
+def test_drafted_cited_doi_wins_over_the_citation_cff_paper():
+    """A question-rooted chain may cite, as its first citation, a paper other than
+    CITATION.cff's; the drafted DOI must not be silently replaced."""
+    spec, meta = _real_spec("06_citation")
+    text = ("##### Citation Type (dropdown)\n\n```\nuses method in\n```\n\n"
+            "##### DOI or other URL of the cited work (text input)\n\n```\nhttps://doi.org/10.5194/nhess-26-2765-2026\n```\n")
+    st = bcd.build_step("06_citation", spec, meta, {"paper_doi": "10.1/x"}, text, None)
+    assert st["prefill"]["st02"][0] == {"cites": "http://purl.org/spar/cito/usesMethodIn",
+                                        "cited": "https://doi.org/10.5194/nhess-26-2765-2026"}
+    assert "cited = nanopubs/drafts/06_citation.md" in st["provenance"]["st02"]
+
+
+def test_non_doi_first_citation_stops_the_build():
+    """The first citation must be a DOI. A nanopublication URI there must neither be
+    published nor silently replaced by the CITATION.cff paper (which would publish
+    the drafted relation, e.g. 'extends', against a work the author did not name)."""
+    spec, meta = _real_spec("06_citation")
+    outcome = "https://w3id.org/sciencelive/np/RA7f_o-KNPr1Rq2OPPJD47XcUYtPvIRF4rRDqFg-tsZgA"
+    text = ("##### Citation Type (dropdown)\n\n```\nextends\n```\n\n"
+            f"##### DOI or other URL of the cited work (text input)\n\n```\n{outcome}\n```\n")
+    with pytest.raises(SystemExit, match="not a DOI"):
+        bcd.build_step("06_citation", spec, meta, {"paper_doi": "10.1/x"}, text, None)
+
+
+def test_skeleton_paper_token_falls_back_to_the_citation_cff_paper():
+    """The skeleton's ``https://doi.org/{{PAPER_DOI}}`` is a placeholder, not a value."""
+    spec, meta = _real_spec("06_citation")
+    text = ("##### Citation Type (dropdown)\n\n```\n\n```\n\n"
+            "##### DOI or other URL of the cited work (text input)\n\n```\nhttps://doi.org/{{PAPER_DOI}}\n```\n")
+    cff = {"paper_doi": "10.1/x"}
+    st = bcd.build_step("06_citation", spec, meta, cff, text, None,
+                        cito_relation="http://purl.org/spar/cito/confirms")
+    assert st["prefill"]["st02"][0]["cited"] == "https://doi.org/10.1/x"
+
+
 def test_status_mapping_still_applies_when_the_draft_records_no_type():
     spec, meta = _real_spec("06_citation")
     text = "##### Citation Type (dropdown)\n\n```\n\n```\n\n##### DOI or other URL of the cited work\n"
