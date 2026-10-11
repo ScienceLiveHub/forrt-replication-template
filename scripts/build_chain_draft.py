@@ -342,6 +342,7 @@ def _draft_sections(text: str) -> dict:
 
 
 _URL_RE = re.compile(r"https?://[^\s)\]>,;`*]+|\b10\.\d{4,9}/[^\s)\]>,;`*]+")
+_DOI_URL_RE = re.compile(r"^https?://(dx\.)?doi\.org/10\.\d+/\S+$", re.I)
 _CITO_ROW_RE = re.compile(r"^\s*[-*]\s+Type:\s*(.+?)\s*(?:→|->)\s*URL:\s*(\S+)", re.M)
 
 
@@ -380,21 +381,28 @@ def cito_uri(value: str) -> str | None:
     return CITO + v if re.fullmatch(r"[a-z][A-Za-z]+", v) else None
 
 
-def draft_citations(draft_text: str) -> tuple[str | None, list[dict]]:
-    """The citation type recorded for the first citation (the fenced value under
-    the ``Citation Type`` heading), and any further ``- Type: … → URL: …`` rows."""
-    first = None
+def draft_citations(draft_text: str) -> tuple[str | None, str | None, list[dict]]:
+    """The citation type and cited work recorded for the first citation (the fenced
+    values under the ``Citation Type`` and ``DOI or other URL of the cited work``
+    headings), and any further ``- Type: … → URL: …`` rows."""
+    first = first_url = None
     m = re.search(r"^#+\s*Citation Type[^\n]*\n(.*?)(?=^#+\s)", draft_text, re.M | re.S)
     if m:
         f = re.search(r"```[a-z]*\n(.*?)```", m.group(1), re.S)
         if f and f.group(1).strip():
             first = cito_uri(f.group(1).strip().splitlines()[0])
+    m = re.search(r"^#+\s*DOI or other URL of the cited work[^\n]*\n(.*?)(?=^#+\s|\Z)", draft_text, re.M | re.S)
+    if m:
+        f = re.search(r"```[a-z]*\n(.*?)```", m.group(1), re.S)
+        u = _URL_RE.match(f.group(1).strip()) if f else None
+        if u and "{{" not in u.group(0):          # the skeleton's {{PAPER_DOI}} is not a value
+            first_url = _as_url(u.group(0))
     rows = []
     for rel, url in _CITO_ROW_RE.findall(draft_text):
         uri, u = cito_uri(rel), _URL_RE.match(url)
         if uri and u:
             rows.append({"cites": uri, "cited": _as_url(u.group(0))})
-    return first, rows
+    return first, first_url, rows
 
 
 def draft_choice(draft_text: str, field: dict) -> str | None:
@@ -704,13 +712,24 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
     # docs/chain-draft-contract.md). Prepare one row: the relation suggested from
     # the Outcome's validation status, cited = the replicated paper.
     if step == "06_citation":
-        drafted_type, extra_rows = draft_citations(draft_text) if draft_text else (None, [])
+        drafted_type, drafted_cited, extra_rows = (draft_citations(draft_text) if draft_text
+                                                   else (None, None, []))
         row: dict = {}
         if drafted_type:                       # the agent's recorded choice wins: in a
             row["cites"] = drafted_type        # question-rooted chain the cited paper is
         elif cito_relation:                    # not confirmed or qualified, so the status
             row["cites"] = cito_relation       # mapping would publish the wrong relation
-        paper = metadata_value(step, "cited", cff)
+        # The first citation is the work the chain is about, so it must be a DOI.
+        # A drafted DOI wins (a question-rooted chain may cite a paper other than
+        # CITATION.cff's). Anything else stops the build: substituting the paper
+        # would pair the drafted relation with a work the author did not name.
+        if drafted_cited and not _DOI_URL_RE.match(drafted_cited):
+            raise SystemExit(
+                f"{drafts_label}/{step}.md: the first citation's URL is not a DOI ({drafted_cited}). "
+                "The first citation must be a DOI (or the placeholder, for the CITATION.cff paper); "
+                "put links to other works, such as another chain's nanopublication, under "
+                "'Additional citations'.")
+        paper = drafted_cited or metadata_value(step, "cited", cff)
         if paper:
             row["cited"] = paper
         rows = ([row] if row else []) + extra_rows
@@ -718,7 +737,8 @@ def build_step(step: str, spec: dict, registry_meta: dict, cff: dict,
             prefill["st02"] = rows
             provenance["st02"] = ((f"cites = {drafts_label}/{step}.md" if drafted_type
                                    else "cites = validation status (see 05_outcome)")
-                                  + "; cited = CITATION.cff references[article]"
+                                  + (f"; cited = {drafts_label}/{step}.md" if drafted_cited
+                                     else "; cited = CITATION.cff references[article]")
                                   + (f"; further rows = {drafts_label}/{step}.md" if extra_rows else ""))
         return _finish(step, registry_meta, prefill, provenance, manual, published_uri)
 

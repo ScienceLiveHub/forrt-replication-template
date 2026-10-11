@@ -39,6 +39,8 @@ Write the chosen type in the block below (a vocabulary label such as `cites as a
 
 ##### DOI or other URL of the cited work (text input)
 
+Must be a DOI (`https://doi.org/...`): the first citation is the work the chain is about. Leave the placeholder to use the paper in `CITATION.cff`. Links to other works, such as another chain's nanopublication, go under *Additional citations* below.
+
 ```
 https://doi.org/{{PAPER_DOI}}
 ```
