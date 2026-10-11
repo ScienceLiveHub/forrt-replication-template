@@ -105,17 +105,22 @@ jobs:
           # through to `DOI=null` and an echo saying it had been published.
           # `curl -f` would fix the exit code but throw away the response body
           # that says WHY Zenodo refused, so capture both.
+          #
+          # Errors go to stderr: callers redirect zcurl's stdout (the response
+          # body) to /dev/null for the upload and metadata calls, and an error
+          # printed to stdout vanished with it, leaving a bare "exit code 1".
           zcurl() {
             local what="$1"; shift
-            local out code
-            out=$(curl -sS -w '\n__HTTP__%{http_code}' "$@") || {
-              echo "::error::${what}: could not reach Zenodo."
+            local out code rc=0
+            out=$(curl -sS -w '\n__HTTP__%{http_code}' "$@") || rc=$?
+            if [ "${rc}" -ne 0 ]; then
+              echo "::error::${what}: curl failed (exit ${rc}) before Zenodo answered." >&2
               exit 1
-            }
+            fi
             code=${out##*__HTTP__}
             out=${out%$'\n'__HTTP__*}
             if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then
-              echo "::error::${what} failed (HTTP ${code}). Zenodo said: ${out}"
+              echo "::error::${what} failed (HTTP ${code}). Zenodo said: ${out}" >&2
               exit 1
             fi
             printf '%s' "${out}"
