@@ -122,6 +122,30 @@ plt.show()  # required for MyST inline display
 
 ---
 
+## Check figure layout in code, not by eye
+
+A figure can run without error and still be unreadable: labels on top of each
+other, a legend hiding the data, direct labels running into the next panel. None
+of that fails a pipeline unless something checks it. `scripts/figcheck.py` does,
+on the rendered figure:
+
+```python
+from figcheck import assert_layout, spread_labels
+
+fig.tight_layout()
+spread_labels(ax, [(x_end, y_end, "series A"), ...])  # optional: direct line labels, kept apart
+assert_layout(fig)   # raises if two labels overlap or sit closer than 3 pt, or a legend covers data
+fig.savefig("../figures/main_result.png", dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+Because it raises, a crowded figure fails the notebook and the Snakemake rule, in
+CI as locally. It checks layout only, not whether the chart is the right one or
+whether its colours are distinguishable: still look at the output. Tests:
+`tests/test_figcheck.py`.
+
+---
+
 ## MyST iframe responsive wrapper — long embeds need `<details>`
 
 MyST automatically wraps every `<iframe>` in a responsive container with `padding-bottom:60%; width:min(max(100%, 500px), 100%)` and forces `width="100%" height="100%"` on the iframe. Explicit pixel heights on raw `<iframe>` tags are ignored — the iframe's height is locked to 60 percent of the page width.

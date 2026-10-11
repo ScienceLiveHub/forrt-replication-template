@@ -24,12 +24,22 @@
 # **Inline display rule:** always pair `fig.savefig(...)` with `plt.show()`.
 # Without `plt.show()`, MyST builds an empty cell. Don't use
 # `matplotlib.use('Agg')` — it blocks inline display.
+#
+# **Layout check:** call `assert_layout(fig)` (`scripts/figcheck.py`) before
+# `fig.savefig(...)`. It fails the notebook — and so the pipeline — when two text
+# labels overlap or nearly touch, or when a legend covers data. For labels at the
+# end of lines, `spread_labels(ax, [(x, y, text), ...])` keeps them apart; call it
+# after `fig.tight_layout()`.
 
 # %%
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
+sys.path.insert(0, str(Path("../scripts").resolve()))
+from figcheck import assert_layout  # noqa: E402
 
 # %%
 RESULTS_DIR = Path("../results")
@@ -47,6 +57,7 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 # ax.set_title("Replication headline result")
 # ax.set_ylabel("Value")
 # fig.tight_layout()
+# assert_layout(fig)  # no overlapping labels, no legend over data
 #
 # fig.savefig(FIGURES_DIR / "main_result.png", dpi=150, bbox_inches="tight")
 # plt.show()  # required for MyST inline display
