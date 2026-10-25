@@ -1,77 +1,68 @@
 # `docs/ro-crate.md` — RO-Crate packaging
 
-This template ships an `ro-crate-metadata.json` at the repo root, making the entire repository a **Research Object Crate** ([RO-Crate 1.2](https://www.researchobject.org/ro-crate/specification/1.2/)). RO-Crate is a community-driven JSON-LD packaging convention for research data, code, and metadata — a Crate is a directory (or zip) that contains a structured `ro-crate-metadata.json` alongside the artefacts it describes.
+`ro-crate-metadata.json` at the repo root makes the whole repository a **Research Object Crate** ([RO-Crate 1.2](https://www.researchobject.org/ro-crate/specification/1.2/)): a FAIR Digital Object that says what the replication is, which workflow produced which files from which data, under which community profile, and which signed nanopublications state what was claimed and how it held.
 
-## Profiles
-
-The Crate conforms to three layered profiles:
-
-1. **[RO-Crate 1.2](https://w3id.org/ro/crate/1.2)** — the base spec. Defines the `Dataset` root, `hasPart` graph, file metadata.
-2. **[Process Run Crate 0.5](https://w3id.org/ro/wfrun/process/0.5)** — describes a *single execution* of a workflow. Encodes inputs, outputs, and the workflow definition.
-3. **[Workflow RO-Crate 1.0](https://w3id.org/workflowhub/workflow-ro-crate/1.0)** — describes a *workflow* itself (independent of any one execution). The `Snakefile` is the `mainEntity` and is typed as `ComputationalWorkflow`.
-
-These three together describe the replication as both *the workflow definition* and *the artefact of running it*, in a way that downstream tools (WorkflowHub, Galaxy, FAIR-RDM) can consume.
-
-## What's inside the Crate
-
-The default `ro-crate-metadata.json` lists:
-
-- **Author** — Person with ORCID and affiliation.
-- **Workflow** — `Snakefile` typed as `SoftwareSourceCode` + `ComputationalWorkflow`, with declared inputs and outputs.
-- **Notebooks** — each `notebooks/*.py` typed as `SoftwareSourceCode` + `Notebook`.
-- **Datasets** — `paper/`, `data/`, `results/`, `figures/` typed as `Dataset` with descriptions.
-- **Configuration files** — `pixi.toml`, `pixi.lock`, `Dockerfile` typed as `ConfigurationFile`.
-- **Citation** — back-link to the original paper DOI as `ScholarlyArticle`.
-- **Nanopub registry** — `nanopubs/PUBLISHED.md` typed as `TextObject` with description pointing to the FORRT chain.
-
-## Maintaining the Crate
-
-The Crate description should stay in sync with the repository content. When you add a notebook, dataset, or output:
-
-1. Add a new entry under the root `Dataset`'s `hasPart`.
-2. Add a node describing the new file/directory (with `@type`, `name`, optional `description`).
-3. If the new artefact is consumed or produced by the Snakemake workflow, add it to the `Snakefile` node's `input` or `output` array.
-
-For releases, also update:
-
-- The root `Dataset` `datePublished` to the release date.
-- The root `Dataset` `version` (add this property at release time).
-- The Crate's `identifier` to the Zenodo concept DOI once it's minted (`{{ZENODO_DOI}}` placeholder is currently in `CITATION.cff` and `codemeta.json` — promote the value here too).
-
-## Validating the Crate
-
-Use the [ro-crate-py](https://github.com/ResearchObject/ro-crate-py) library to validate:
+**The file is generated, never hand-edited.** `scripts/build_rocrate.py` rebuilds it from what the repository already records:
 
 ```bash
-pip install rocrate
-rocrate validate .
+pixi run -e rocrate build-rocrate       # writes ro-crate-metadata.json
+pixi run -e rocrate validate-rocrate    # RO-Crate 1.2, REQUIRED level
 ```
 
-Or use the [RO-Crate Playground](https://www.researchobject.org/ro-crate/playground/) — paste the JSON in and it will lint conformance.
+CI rebuilds and validates it after every pipeline run, and the release workflow rebuilds it right after recording the version DOI and SWHID, so the committed crate always describes the latest release. On the uninitialised template the script does nothing and the placeholder crate stays as it is.
 
-CI integration is straightforward: add a step to `.github/workflows/ci.yml` that runs `rocrate validate .` on every push.
+## Where each part comes from
+
+| In the crate | Source |
+|---|---|
+| Name, description, keywords, authors (ORCID, affiliation), licence, date | `CITATION.cff` (`codemeta.json` as fallback for the description) |
+| `identifier` (version DOI), `sameAs` (concept DOI), `isBasedOn` (SWHID), `version` | `CITATION.cff` `identifiers`, written by `set_release_identifiers.py` |
+| `mainEntity`: the `Snakefile` as `ComputationalWorkflow`, Snakemake version from `pixi.lock` | the repo |
+| Notebooks, `pixi.toml`, `Dockerfile`, result tables, NetCDF results and figures (`hasPart`, referenced in place) | the repo; files over 20 MB stay in the Zenodo release |
+| Input datasets (`hasPart`, remote files) | `CITATION.cff` references of type `dataset` / `database` |
+| `citation` (the original paper and other cited work) | the other `CITATION.cff` references |
+| `subjectOf`: the six signed FORRT nanopublications | `nanopubs/PUBLISHED.md` |
+| Community FAIR Implementation Profile, funding, study area, CCA fields | `rocrate.json` (optional, below) |
+
+## `rocrate.json` — what the repo cannot say about itself
+
+Copy `rocrate.example.json` to `rocrate.json` and keep only the keys you need:
+
+| Key | Use |
+|---|---|
+| `profiles` | Profiles the crate `conformsTo`, e.g. the community's FAIR Implementation Profile nanopub |
+| `funding` | Grants, each with its funder's ROR id (also used for the ROHub deposit) |
+| `place` | Study area name and bounding box `[west, south, east, north]` |
+| `inputs` | Input datasets, when they are not in `CITATION.cff` references (replaces them) |
+| `citations` | Cited work, when not in `CITATION.cff` references (replaces them) |
+| `project` / `publisher` | Publisher of the crate (default: the first author) |
+| `results_license` | A separate licence for `results/` and `figures/` (e.g. CC BY 4.0, code stays MIT) |
+| `main_workflow` | A Galaxy `.ga` workflow that is the study's real workflow (the Snakefile then only orchestrates) |
+| `include` | Replace the default file patterns |
+| `cca` | Climate-change adaptation studies: the [CCA RO-Crate profile](https://w3id.org/cca-crate-profile/0.9) fields (`sensitivity`, `data_collector`, `source`, `nature`) |
+| `rohub` | ROHub deposit settings, see `docs/rohub-deposit.md` |
+
+The CCA profile's terms are added as prefixes only: its published JSON-LD context redefines core terms with `https://schema.org`, which would change their meaning ([FAIR2Adapt/cca-crate-profile#4](https://github.com/FAIR2Adapt/cca-crate-profile/issues/4)).
+
+## Choices made for validity
+
+- Cited software is typed `CreativeWork`, not `SoftwareSourceCode`: the validator reads a code URL as a local script and fails.
+- A referenced input `Dataset` is listed in `hasPart`, as RO-Crate 1.2 requires.
+- `ro-crate-metadata.json` itself is never listed as a part: ROHub reserves that name (see `docs/rohub-deposit.md`).
 
 ## Why RO-Crate alongside `CITATION.cff` / `codemeta.json` / FORRT?
-
-Each artefact captures a different layer of metadata:
 
 | Artefact | Captures | Audience |
 |---|---|---|
 | `CITATION.cff` | how to cite the software | humans, citation tools (Zotero, Zenodo) |
 | `codemeta.json` | software-specific structured metadata | Software Heritage, OpenAIRE |
-| `ro-crate-metadata.json` | the *whole research object* (workflow + data + code + provenance) as a navigable graph | WorkflowHub, FAIR-RDM platforms, RO-Crate consumers |
-| FORRT nanopub chain | typed scientific provenance — what claim, tested how, what result | Scholarly literature, Wikidata, nanopub network |
+| `ro-crate-metadata.json` | the *whole research object* (workflow + data + code + provenance) as a navigable graph | ROHub, WorkflowHub, FAIR-RDM platforms |
+| FORRT nanopub chain | typed scientific provenance: what claim, tested how, what result | nanopub network, Science Live, Wikidata |
 
-They are complementary, not redundant. RO-Crate ties the local repo together as one navigable entity; `CITATION.cff` makes the repo citable; `codemeta.json` makes the software discoverable; the FORRT chain makes the science auditable.
-
-## Future: depositing the Crate
-
-For long-term archival, zip the entire repo (including `ro-crate-metadata.json`) and deposit on Zenodo. RO-Crate is increasingly recognised by FAIR-RDM platforms — Zenodo's Crate-aware tooling is in development; for now, the Crate just lives as a top-level JSON file inside the deposit.
+The crate is built from the other three, so it adds a view, not a fourth thing to keep in sync.
 
 ## References
 
 - [RO-Crate 1.2 specification](https://www.researchobject.org/ro-crate/specification/1.2/)
-- [RO-Crate profiles](https://www.researchobject.org/ro-crate/specification/1.2/profiles.html)
-- [Process Run Crate](https://www.researchobject.org/workflow-run-crate/profiles/process_run_crate)
+- [ro-crate-py](https://github.com/ResearchObject/ro-crate-py) and [rocrate-validator](https://github.com/crs4/rocrate-validator)
 - [Workflow RO-Crate](https://www.researchobject.org/workflow-ro-crate/)
-- [WorkflowHub](https://workflowhub.eu/) — the largest aggregator of Workflow RO-Crates.

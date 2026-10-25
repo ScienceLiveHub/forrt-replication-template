@@ -224,13 +224,13 @@ The documents under `docs/` are the load-bearing reference material; reach for t
 | Write a PICO or PCC question | `docs/pico-study-outcome-levels.md` |
 | Touch CI / pixi.toml / Dockerfile / myst.yml | `docs/cicd-conventions.md` |
 | Cut a release / claim a phase done | `docs/fair4rs-checklist.md` |
-| Update RO-Crate metadata after adding artefacts | `docs/ro-crate.md` |
+| Regenerate / validate the RO-Crate (`ro-crate-metadata.json` is generated, never hand-edited) | `docs/ro-crate.md` + `pixi run -e rocrate build-rocrate` |
 | Need to retract / supersede / batch-publish a nanopub | `docs/programmatic-nanopubs.md` |
 | Draft the launch announcement post | `docs/announcement-template.md` |
 | Use this template with Cursor / Aider / Continue / non-Claude AI | `docs/ai-portability.md` |
 | Archive HEALPix EO data as GRID4EARTH / EOPF Zarr | `docs/eopf-zarr-conversion.md` |
 | Verify a published FORRT chain's internal + external consistency | `/verify-chain` skill (`.claude/skills/verify-chain/SKILL.md`) |
-| Deposit the work as a Rohub Research Object | `docs/rohub-deposit.md` + `scripts/build-rohub-manifest.py` |
+| Deposit the work as a ROHub Research Object | `docs/rohub-deposit.md` + `pixi run -e rocrate deposit-rohub --dry-run` |
 | Seed Phase 1 from a published nanopub URI (instead of a paper PDF) | `/import-from-nanopub` skill (`.claude/skills/import-from-nanopub/SKILL.md`) + `docs/nanopub-chain-discovery.md` |
 | Record the paper's geographic study area (optional, spatial papers) | `docs/geo-coverage.md` + `nanopubs/drafts/09_geo_coverage.md` |
 

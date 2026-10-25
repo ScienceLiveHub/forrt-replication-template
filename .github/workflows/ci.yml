@@ -100,6 +100,16 @@ jobs:
         if: steps.guard.outputs.ready == 'true'
         run: pixi run snakemake --cores 1
 
+      # ro-crate-metadata.json is generated, never hand-edited: rebuild it from
+      # CITATION.cff + nanopubs/PUBLISHED.md + rocrate.json against the files the
+      # pipeline just produced, and fail if it is not a valid RO-Crate 1.2.
+      # See docs/ro-crate.md.
+      - name: Rebuild and validate RO-Crate
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          pixi run -e rocrate build-rocrate
+          pixi run -e rocrate validate-rocrate
+
       - name: Upload results
         if: always() && steps.guard.outputs.ready == 'true'
         uses: actions/upload-artifact@v5

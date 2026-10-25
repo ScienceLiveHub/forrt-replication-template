@@ -1,0 +1,19 @@
+{
+  "profiles": [
+    {"@id": "https://w3id.org/np/RA...", "name": "FAIR Implementation Profile of <community>"}
+  ],
+  "funding": [
+    {"@id": "https://cordis.europa.eu/project/id/101188256", "name": "FAIR2Adapt", "identifier": "101188256",
+     "funder": {"@id": "https://ror.org/00k4n6c32", "name": "European Commission"}}
+  ],
+  "place": {"name": "Hamburg, Germany", "bbox": [9.73, 53.39, 10.33, 53.74]},
+  "results_license": {"@id": "https://spdx.org/licenses/CC-BY-4.0", "name": "CC BY 4.0"},
+  "rohub": {
+    "research_areas": ["Earth sciences"],
+    "ros_type": "Workflow-centric Research Object",
+    "authors": [{"username": "<your ROHub login>"}],
+    "sketch": "figures/main_result.png",
+    "sketch_title": "Replicated headline result",
+    "outcome_evidence": ["results/summary.json"]
+  }
+}
