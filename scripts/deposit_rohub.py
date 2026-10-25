@@ -192,15 +192,22 @@ def deposit(repo: Path, p: dict) -> dict:
                         description=r["description"])
         ids[r["id"]] = res.identifier
 
+    # Agents are resolved to identifiers here and posted directly: ROHub's user search (which
+    # rohub.ros_set_authors relies on) lags behind people it has just created, so an author already
+    # added to another RO can be reported both "not found" and "already exists".
     agents = []
     for a in p["authors"]:
         if "username" in a:
-            agents.append(a["username"])
+            agents.append(utils.does_user_exist(a["username"]))
             continue
-        found = utils.get_request(url=settings.API_URL + f"users/?search={a['orcid_id']}").json().get("results", [])
-        agents.append(found[0]["username"] if found else {"agent_type": "user", **a})
+        orcid = utils.generate_orcid_url(a["orcid_id"])
+        uid = utils.does_user_exist(orcid)
+        if not uid:
+            found = utils.get_request(url=settings.API_URL + f"external_users/?user_id={orcid}", use_token=True).json()
+            uid = found["results"][0]["identifier"] if found.get("results") else None
+        agents.append(uid or rohub.external_user_add(display_name=a["display_name"], orcid_id=a["orcid_id"]))
     if agents:
-        retry(rohub.ros_set_authors, ro_id, agents)
+        retry(utils.post_request, url=settings.API_URL + f"ros/{ro_id}/authors/", data={"ro": ro_id, "agents": agents})
     if p["license"]:
         retry(rohub.ros_set_license, ro_id, p["license"])
     for f in p["funding"]:
