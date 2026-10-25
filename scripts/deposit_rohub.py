@@ -168,11 +168,11 @@ def deposit(repo: Path, p: dict) -> dict:
         ro_id = None
         for _ in range(10):
             time.sleep(30)
-            r = utils.get_request(url=settings.API_URL + f"ros/?owner={user}&ordering=-created_on&page_size=10",
+            r = utils.get_request(url=settings.API_URL + f"ros/?owner={user}&ordering=-created&page_size=10",
                                   use_token=True).json()
             since = time.strftime("%Y-%m-%dT%H:%M", time.gmtime(started - 120))
             ro_id = next((x["identifier"] for x in r.get("results", [])
-                          if x["title"] == p["title"] and (x.get("created_on") or "") >= since), None)
+                          if x["title"] == p["title"] and (x.get("created") or "") >= since), None)
             if ro_id:
                 break
         if not ro_id:
