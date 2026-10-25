@@ -68,11 +68,34 @@ pytest = "*"
 # step. scripts/template_fields.py extracts the field spec from it; the offline
 # tests and scripts/check_template_drift.py both need it. See nanopubs/templates/.
 rdflib = "*"
+# scripts/build_rocrate.py writes ro-crate-metadata.json (RO-Crate 1.2) with ro-crate-py.
+rocrate = "0.16.*"
+pyyaml = "*"
+
+# Checking and depositing the RO-Crate: rocrate-validator and ROHub's client are on
+# PyPI only, and roc-validator pins rich<14, which the default solve group cannot
+# take, so this environment is solved on its own. See docs/ro-crate.md.
+#   pixi run -e rocrate validate-rocrate
+#   pixi run -e rocrate deposit-rohub --dry-run
+[feature.rocrate.dependencies]
+python = "3.12.*"
+rocrate = "0.16.*"
+pyyaml = "*"
+
+[feature.rocrate.pypi-dependencies]
+roc-validator = "==0.13.0"
+rohub = "==1.2.1"
+
+[feature.rocrate.tasks]
+build-rocrate = "python scripts/build_rocrate.py"
+validate-rocrate = "rocrate-validator validate -p ro-crate-1.2 -l REQUIRED --no-paging ."
+deposit-rohub = "python scripts/deposit_rohub.py"
 
 [environments]
 default = { solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 tests = { features = ["tests"], solve-group = "default" }
+rocrate = { features = ["rocrate"], no-default-feature = true }
 
 [tasks]
 run = "snakemake --cores 1"

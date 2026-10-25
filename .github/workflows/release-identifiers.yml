@@ -76,7 +76,7 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.6
         with:
           pixi-version: v0.68.1
-          environments: tests # the env carrying ruamel.yaml
+          environments: tests rocrate # ruamel.yaml; ro-crate-py for build-rocrate
           locked: true
           cache: true
 
@@ -89,6 +89,10 @@ jobs:
             --repo "${{ github.repository }}" \
             --tag "${{ steps.rev.outputs.tag }}" \
             --commit "${{ steps.rev.outputs.commit }}"
+          # Regenerate the whole crate from the identifiers just recorded, so it
+          # describes this release (files, nanopub chain, citations), not only
+          # carries its DOI. See docs/ro-crate.md.
+          pixi run -e rocrate build-rocrate
 
       - name: Commit
         if: steps.guard.outputs.ready == 'true'

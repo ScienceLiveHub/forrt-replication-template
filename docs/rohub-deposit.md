@@ -1,71 +1,50 @@
-# `docs/rohub-deposit.md` — Depositing as a Rohub Research Object
+# `docs/rohub-deposit.md` — Depositing as a ROHub Research Object
 
-[Rohub](https://reliance.rohub.org) (from the RELIANCE EU project) hosts citable Research Objects with DOI minting via Zenodo integration. A Rohub deposit is *not* a duplicate of the source code; it is a **navigation index** — a single citable manifest that aggregates pointers to the GitHub repo, the Zenodo source DOI, the rendered Jupyter Book, every published FORRT nanopub, every notebook, and the cited upstream paper. Each resource keeps its own canonical URL/DOI; Rohub adds discoverability and a DOI for the bundle.
+[ROHub](https://www.rohub.org) hosts citable Research Objects (w3id PIDs, DOIs via Zenodo). A ROHub RO of a replication is one URL a reviewer can open to see the whole constellation: the workflow and its inputs and outputs, the archived release, the signed FORRT chain, the profile it conforms to and the cited paper, with typed relations between them.
 
-## Why Rohub on top of GitHub + Zenodo + Science Live
-
-| Artefact | What it gives | What it lacks alone |
-|---|---|---|
-| GitHub repo | Source code, history, collaboration | Not citable as a fixed version |
-| Zenodo concept DOI | Citable snapshot of the source | One DOI per repo; no cross-repo navigation |
-| Jupyter Book | Human-friendly narrative | Not machine-actionable beyond HTML |
-| Published FORRT nanopubs | Atomic, signed, queryable claims | Distributed across nanopub network; no per-replication index |
-| **Rohub RO** | **Navigable cross-artefact index, citable DOI, type-tagged resources** | (the missing layer) |
-
-A Rohub RO becomes the "one URL" you can hand to a reviewer to see the full constellation: every nanopub, every notebook, the code, the data DOI, the rendered narrative.
-
-## The one-command path
-
-This template ships `scripts/build-rohub-manifest.py`, which reads:
-
-- `CITATION.cff` — title, description, author + ORCID, license, Zenodo concept DOI
-- `nanopubs/PUBLISHED.md` — every published nanopub URI
-- `notebooks/*.py` — every numbered jupytext notebook (skips `_*.py` helpers)
-- `git remote get-url origin` — GitHub repo URL
-
-…and writes:
-
-- `rohub-manifest.json` — the manifest for review
-- `rohub-manifest.zip` — the zipped manifest ready to upload to Rohub
-
-Run from the repo root:
+## The path
 
 ```bash
-python3 scripts/build-rohub-manifest.py
+pixi run -e rocrate build-rocrate                  # the crate must describe the current release
+pixi run -e rocrate deposit-rohub --dry-run        # prints the plan; touches nothing
+ROHUB_USERNAME=... ROHUB_PASSWORD=... pixi run -e rocrate deposit-rohub
 ```
 
-Then in Rohub: *New Research Object → Import ZIP Research Object → select `rohub-manifest.zip`*.
+`scripts/deposit_rohub.py` reads `ro-crate-metadata.json` and builds the RO through ROHub's API:
 
-## What gets included as resources
+1. **Creates** the RO with title, description, type and research areas set from the start.
+2. Adds the crate's local files as **internal resources** in their folders, and its input datasets as external ones.
+3. Adds the release, the six nanopublications (type *Nanopublication*), the profiles, the repository and the citations as **typed external resources**.
+4. Sets authors, licence, funding and study area, and uploads the **sketch** (the RO's image).
+5. Adds the **relations**: workflow `hasInput` / `hasOutput` / `softwareRequirements`; each chain step `wasDerivedFrom` the previous one; the Outcome `wasDerivedFrom` the result files that support it.
 
-For each artefact found, an entry is added to the RO's `hasPart` with the correct Rohub-recognised `@type` IRI:
+It writes `rohub-deposit.json` with the RO id, its PID and every resource id.
 
-| Resource | Rohub `@type` (third slot) |
-|---|---|
-| Published nanopubs (all 6 chain steps + RS + Synthesis if any) | `http://www.nanopub.org/nschema#Nanopublication` |
-| Each `notebooks/<NN>_*.py` | `https://w3id.org/ro/terms/earth-science#JupyterNotebook` |
-| GitHub repo URL | `http://purl.org/wf4ever/wf4ever#WebService` |
-| Jupyter Book site (`<user>.github.io/<repo>/`) | `http://purl.org/wf4ever/wf4ever#WebService` |
-| Zenodo concept DOI URL | `http://purl.org/wf4ever/wf4ever#Dataset` |
-| Cited paper DOI (if added to `citation`) | `dct:BibliographicResource` |
+## `rohub` settings in `rocrate.json`
 
-All resources are typed as `["File", "wf4ever#Resource", <semantic-IRI>]` and carry a `contentUrl` pointing at the external URL — the pattern Rohub's import path requires.
+```json
+"rohub": {
+  "research_areas": ["Earth sciences", "Environmental research"],
+  "ros_type": "Workflow-centric Research Object",
+  "authors": [{"username": "<your ROHub login>"}],
+  "sketch": "figures/main_result.png",
+  "sketch_title": "Replicated headline result",
+  "outcome_evidence": ["results/summary.json"]
+}
+```
 
-## Datetime format
+Without `authors`, the crate's authors are matched to ROHub accounts by ORCID (others are added as new agents). Always set a `sketch`: an RO without an image is hard to recognise in listings.
 
-Rohub expects `YYYY-MM-DD HH:MM:SS.SSSSSS+00:00` (space between date and time, microsecond precision, explicit timezone). The script generates this format automatically.
+## Lessons from ROHub (why the script works this way)
 
-**Critical**: only the **root entity** carries `datePublished` / `dateCreated` / `dateModified`. If any child entry (a cited paper, for instance) has a bare year like `"2020"`, Rohub's import buggily picks it up and uses it as the RO's *created* date — your RO shows "Created 12 May 2020" instead of today. The script strips `datePublished` from all non-root entries to avoid this.
-
-## What the script does NOT do
-
-- **Doesn't auto-deposit** — generates the zip; you upload through Rohub's UI.
-- **Doesn't read the paper PDF** — the cited paper DOI must be in `CITATION.cff` `references` or the script's optional `paper-doi` argument (TODO).
-- **Doesn't follow nanopub chain semantics** — every URI in `PUBLISHED.md` is added equally; the chain structure (which step references which) lives in the nanopub network, not in the Rohub manifest.
-- **Doesn't pin notebook URLs to a tag** — uses `refs/heads/main` (branch-tracking). For a Zenodo-archived stable snapshot, edit the URLs in the generated JSON to a tag before zipping.
+- **Don't use ROHub's RO-Crate import.** It leaves the description empty, so the RO is flagged as spam and locked: every later edit and even deletion fails. It also drops every entity that is not a `File`. Creating the RO first, with its description, avoids both.
+- **Link Zenodo records, not DOIs.** A `doi.org` URL triggers ROHub's enrichment, which mistypes the resource (e.g. as "Taxonomic treatment") and replaces its title. The script uses `zenodo.org/records/<id>` and resolves other DOIs to their landing pages.
+- **Never aggregate `ro-crate-metadata.json`** as a resource: the name is reserved and breaks the RO's zip download and preview.
+- **Funding** uses ROHub's own convention, grant id `<funder ROR>::<grant number>`; a Crossref funder DOI produces a broken link.
+- **Resource titles** are capped at 250 characters.
+- **Under load ROHub answers 504 yet creates the RO.** The script then finds the RO by title instead of creating a second one, and retries calls that fail transiently. Deposit one RO at a time.
 
 ## Cross-references
 
-- `docs/ro-crate.md`: the per-repo `ro-crate-metadata.json` (the *bundle* RO-Crate at the repo root — different from this Rohub *manifest* RO-Crate)
-- `nanopubs/PUBLISHED.md`: the source-of-truth nanopub URI registry that the script reads
-- The diagnosis flow when a Rohub import doesn't render correctly is documented inline in the script's docstring.
+- `docs/ro-crate.md`: what the crate contains and where each part comes from.
+- `nanopubs/PUBLISHED.md`: the nanopub ledger the crate reads.
